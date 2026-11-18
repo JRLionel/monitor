@@ -1,154 +1,249 @@
-# AI 热点监控工具
-
-> 作者：[程序员鱼皮](https://yuyuanweb.feishu.cn/wiki/Abldw5WkjidySxkKxU2cQdAtnah)
->
-> 本项目为教学项目，提供完整视频教程 + 文字教程 + 简历写法 + 面试题解 + 答疑服务，帮你提升项目能力，给简历增加亮点！
->
-> ⭐️ 加入项目系列学习：[加入编程导航](https://www.codefather.cn/vip)
-
-
-
-## 一、项目介绍
-
-这是一套以 **AI 编程实战** 为核心的项目教程，基于 Express 5 + React 19 + OpenRouter + Socket.io，用 AI 编程的方式从 0 到 1 开发一个《AI 热点监控工具》，带你亲身体验 AI Vibe Coding 的完整工作流，学会用 AI 快速做出实用的提效工具！
-
-📺 项目介绍视频，快速查看成品效果：https://bilibili.com/video/BV1g8d8B6ENk
-
-![](https://pic.yupi.icu/1/image-20260304102630302.png)
-
-输入要监控的关键词，系统自动从 Twitter、Bing、HackerNews、搜狗、B 站等 **8+** 个信息源聚合抓取内容，利用 AI 进行真假识别和相关性分析，并通过 WebSocket 实时推送和邮件通知用户。此外，还将热点监控能力封装为 **Agent Skills 技能包**，让 Cursor、VSCode Copilot、Claude Code 等 AI 编程工具也能直接使用。
-
-
-
-### 为什么做这个项目？
-
-鱼皮作为 AI 编程博主，要利用工具第一时间自动发现最新的热点（比如 AI 大模型的更新），并且及时给我发送通知，让我能够走在吃瓜第一线。
-
-既然如此，**不如做一个更通用的工具**。
-
-这就是 AI 热点监控工具的起点：让 AI 帮你盯热点，第一时间获取优质信息！
-
-![](https://pic.yupi.icu/1/AI%E7%83%AD%E7%82%B9%E7%9B%91%E6%8E%A7%E5%AF%B9%E8%AF%9D%E6%A1%86.jpg)
-
-
-
-### 6 大核心能力
-
-1）配置监控关键词，支持激活 / 暂停。
-
-![](https://pic.yupi.icu/1/image-20260304102804249.png)
-
-
-
-2）AI 自动从 8+ 数据源抓取和分析热点，利用 AI 进行查询扩展、真假识别、相关性分析和智能摘要。
-
-![](https://pic.yupi.icu/1/image-20260304103025682.png)
-
-
-
-3）多维度筛选和排序，按来源、重要性、时间范围筛选，按热度、相关性、时间排序。
-
-![](https://pic.yupi.icu/1/image-20260304103219366.png)
-
-
-
-4）全网搜索，输入关键词从多个数据源聚合搜索。
-
-![](https://pic.yupi.icu/1/image-20260304103824666.png)
-
-
-
-5）实时通知，WebSocket 实时推送 + 邮件通知。
-
-![](https://pic.yupi.icu/1/image-20260304104139285.png)
-
-
-
-6）Agent Skills 技能包，安装后在 Cursor、VSCode Copilot、Claude Code 中都能直接使用。
-
-![](https://pic.yupi.icu/1/1772099941189-4fb78679-12ac-4b92-a7b4-b5b4645b09d4.png)
-
-
-
-## 二、项目优势
-
-本项目选题新颖，紧跟 AI 编程时代，以 **实用工具开发** 为导向，区别于增删改查的烂大街项目。项目内容精炼，**不到一周就能学完**，带你掌握 AI 编程的完整工作流，给你的简历和求职大幅增加竞争力！
-
-技术丰富，覆盖 AI 编程全链路：
-
-![](https://pic.yupi.icu/1/image-20260304101227060.png)
-
-从这个项目中你可以学到：
-
-- 如何用 AI 编程从 0 到 1 开发一个完整的工具？
-- 如何安装和使用 MCP 增强 AI 能力？
-- 如何安装和使用 Agent Skills 提升 AI 编程质量？
-- 如何从多个信息源（Twitter、Bing、HN、B 站等）聚合抓取内容？
-- 如何通过 OpenRouter 接入 AI 大模型，实现智能内容审核？
-- 如何实现查询扩展（Query Expansion），提高信息检索的召回率？
-- 如何基于 Socket.io 实现 WebSocket 实时推送？
-- 如何使用 Aceternity UI 打造炫酷的科技感前端界面？
-- 如何开发标准化的 Agent Skills 技能包，并在多种 AI 工具中验证？
-- 如何在 AI 编程中进行人工确认、版本控制和迭代优化？
-
-
-
-### 鱼皮系列项目优势
-
-鱼皮的原创项目以 **实战** 为主，用 **全程直播** 的方式 **从 0 到 1** 带做，从需求分析、技术选型、项目设计、项目初始化、Demo 编写、前后端开发实现、项目优化、部署上线等，每个环节我都 **从理论到实践** 给大家讲的明明白白、每个细节都不放过！
-
-比起看网上的教程学习，鱼皮项目系列的优势：从学知识 => 实践项目 => 复习笔记 => 项目答疑 => 简历写法 => 面试题解的一条龙服务
-
-![](https://pic.yupi.icu/1/%E9%B1%BC%E7%9A%AE%E9%A1%B9%E7%9B%AE%E5%AE%9E%E6%88%98%E7%9A%84%E4%BC%98%E5%8A%BF%E5%A4%A7.jpeg)
-
-编程导航已有 **20+ 套项目教程！** 每个项目的学习重点不同，几乎全都是前端 + 后端的 **全栈项目**，也有大量 AI 应用开发项目。
-
-详细请见：[https://codefather.cn/course](https://www.codefather.cn/course)（在该页面右侧有教程推荐和学习建议）
-
-往期项目介绍视频：[https://bilibili.com/video/BV1YvmbYbEgS](https://www.bilibili.com/video/BV1YvmbYbEgS/)
-
-鱼皮的项目帮很多同学拿到了大厂高薪 Offer：
-
-![](https://pic.yupi.icu/1/%E7%BC%96%E7%A8%8B%E5%AF%BC%E8%88%AA2026%20offer%E6%8A%A5%E5%96%9C.png)
-
-
-
-## 三、更多介绍
-
-功能模块：
-
-![](https://pic.yupi.icu/1/image-20260304101313199.png)
-
-架构设计：
-
-![](https://pic.yupi.icu/1/image-20260304101440202.png)
-
-
-
-## 四、快速运行
-
-> 详细的保姆级教程请参考 [本地运行指南](docs/LOCAL_SETUP.md)
+# HotPulse · AI 热点监控工具
+
+> 输入关键词，让 AI 从全网 8+ 信息源自动抓取、甄别、分析热点，并通过 WebSocket 实时推送到浏览器、通过邮件提醒重要情报。
+
+一个前后端分离的 AI 实战项目：后端基于 Express 5 + Prisma，前端基于 React 19 + Vite，借助 OpenRouter 接入大模型完成真假识别与相关性分析，并把整套监控能力封装为可复用的 Agent Skills 技能包。
+
+> 项目原作：[程序员鱼皮 · AI 热点监控工具](https://www.codefather.cn/)，本 README 聚焦功能模块与系统架构的工程说明。
+
+---
+
+## 目录
+
+- [一、项目简介](#一项目简介)
+- [二、六大功能模块](#二六大功能模块)
+- [三、系统架构](#三系统架构)
+- [四、项目结构](#四项目结构)
+- [五、快速开始](#五快速开始)
+- [六、API 接口速览](#六api-接口速览)
+- [七、Agent Skills 技能包](#七agent-skills-技能包)
+- [八、相关文档](#八相关文档)
+
+---
+
+## 一、项目简介
+
+作为内容创作者或技术人，需要第一时间掌握领域动态（如大模型更新）。手动刷遍各平台既慢又容易漏。本项目把这件事交给 AI：
+
+1. 你配置一批**监控关键词**；
+2. 系统定时从 **Twitter、Bing、HackerNews、搜狗、Bilibili、微博** 等信息源并行抓取内容；
+3. AI 自动完成**查询扩展 → 真假识别 → 相关性打分 → 重要性分级 → 摘要生成**；
+4. 过滤掉低质、无关内容后入库，并通过 **实时推送 + 邮件 + 站内通知** 三通道告知你；
+5. 同一套能力还能以 **Agent Skills** 形式被 Cursor / Claude Code 等 AI 工具直接调用。
+
+---
+
+## 二、六大功能模块
+
+### 🗝️ 1. 关键词管理
+| 能力 | 说明 |
+|------|------|
+| 添加 / 删除监控关键词 | 关键词唯一，重复添加返回冲突提示 |
+| 激活 / 暂停单个关键词 | 一键切换状态，仅激活词参与定时巡检 |
+| ⭐ AI 自动扩展查询变体 | Query Expansion：生成别名、缩写、中英对照等 5–15 个变体并缓存，用于文本预匹配 |
+| B 站账号智能检测 | 关键词命中 UP 主时，直接抓取该账号最新投稿 |
+
+### 🔍 2. 热点采集与分析
+| 能力 | 说明 |
+|------|------|
+| ⭐ 8+ 数据源并行采集 | `Promise.allSettled` 并发抓取，单源失败不影响整体；内置频率限制与随机 UA |
+| ⭐ AI 真实性验证 | 过滤标题党、假新闻、营销软文（`isReal`） |
+| ⭐ AI 相关性评分（0–100） | 结合关键词变体预匹配严格打分，低于 50 分过滤 |
+| AI 重要性分级 | `low / medium / high / urgent` 四档 |
+| AI 智能摘要生成 | 一句话说明内容与监控关键词的关联 |
+| AI 相关性分析理由 | 给出打分依据，前端可展开查看 |
+
+### 📊 3. 信息展示与筛选
+| 能力 | 说明 |
+|------|------|
+| 热点雷达仪表盘 | 总热点 / 今日新增 / 紧急热点 / 生效监控词四张统计卡 |
+| ⭐ 5 种排序方式 | 最新、发布时间、相关性、重要性、热度（加权综合分） |
+| ⭐ 多维度筛选 | 按来源、重要性、关键词、真实性、时间范围筛选 |
+| 分页加载 | 服务端分页，参数回传前端 |
+| 展开 / 折叠分析详情 | AI 理由与原始内容均可单独或一键展开 |
+| 一键跳转原文 | 直达信息源 |
+
+### 🔔 4. 通知系统
+| 能力 | 说明 |
+|------|------|
+| ⭐ WebSocket 实时推送 | 基于房间（`keyword:<词>`）按关键词定向推送新热点 |
+| 邮件通知（high/urgent） | 通过 Nodemailer/SMTP，仅重要级别触发，附 HTML 模板 |
+| 站内通知管理 | 通知列表、单条已读、全部已读、删除 / 清空 |
+| 已读 / 未读状态 | 未读计数实时联动顶部铃铛 |
+
+### 🌐 5. 全网搜索
+| 能力 | 说明 |
+|------|------|
+| 关键词全网搜索 | 手动输入关键词即时检索，不写入数据库 |
+| 多数据源聚合结果 | 聚合搜索源并去重 |
+| 搜索结果筛选排序 | 复用与仪表盘相同的筛选 / 排序组件（前端内存计算） |
+
+### 🤖 6. Agent Skills
+| 能力 | 说明 |
+|------|------|
+| ⭐ 完全自包含技能包 | `skills/hot-monitor`，无需后端与数据库即可独立运行 |
+| ⭐ 多 AI 工具兼容 | 标准 `SKILL.md` 规范，可供 Cursor / VSCode Copilot / Claude Code 等加载 |
+| Python 采集脚本 | 多源搜索脚本输出 JSON，供 Agent 自行分析 |
+| 分析框架文档 | 提供真实性 / 相关性 / 重要性判定指南与报告模板 |
+
+---
+
+## 三、系统架构
+
+### 3.1 整体分层
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  浏览器  React 19 SPA（HotPulse）                             │
+│  • 热点雷达 / 监控词 / 全网搜索 三个视图                        │
+│  • Tailwind CSS + Framer Motion + Aceternity 风格组件          │
+│  • api.ts（REST） · socket.ts（WebSocket）                    │
+└───────────────┬─────────────────────────┬─────────────────────┘
+                │ HTTP /api               │ WS /socket.io
+                ▼                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Vite Dev Server（:5173）  —— proxy 代理到 :3001              │
+└───────────────┬─────────────────────────┬─────────────────────┘
+                │                         │
+                ▼                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Express 5 服务（:3001）                                      │
+│  Routes: /keywords  /hotspots  /notifications  /settings      │
+│  • /api/health 健康检查   • /api/check-hotspots 手动触发       │
+│  • Socket.io 房间订阅 / 事件推送                              │
+│  • node-cron 每 30 分钟定时巡检                               │
+└───────────────┬─────────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Services 业务层                                              │
+│  jobs/hotspotChecker（巡检编排）                              │
+│  services/: twitter · search · chinaSearch · ai · email       │
+└───────────────┬─────────────────────────────────────────────┘
+                │
+                ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Prisma ORM  →  SQLite（file:./dev.db）                       │
+│  Keyword · Hotspot · Notification · Setting                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### 3.2 核心采集流水线
+
+定时（每 30 分钟）或手动触发 `runHotspotCheck`，对每个激活关键词依次执行：
+
+```
+读取激活关键词
+      │
+      ├─① B 站账号检测 ──→ 命中则抓取该 UP 主最新投稿
+      │
+      ├─② Query Expansion ──→ AI 扩展关键词变体（带缓存）
+      │
+      ├─③ 多源并行采集 ──→ Twitter / Bing / HackerNews / 搜狗 / B站 / 微博
+      │                     （Promise.allSettled，容错）
+      │
+      ├─④ 数据清洗 ──→ URL 去重 → 7 天新鲜度过滤 → 来源优先级排序
+      │
+      ├─⑤ 配额分配 ──→ Twitter 最多 15 条，其他源共 10 条
+      │
+      ├─⑥ AI 分析 ──→ 真假识别 + 相关性评分/理由 + 重要性 + 摘要
+      │
+      ├─⑦ 阈值过滤 ──→ 非真实 / 相关性<50 / 未提及且<65 一律丢弃
+      │
+      └─⑧ 入库 & 通知 ──→ 写 Hotspot + 站内 Notification
+                            → WebSocket 按词推送 → high/urgent 发邮件
+```
+
+### 3.3 技术栈
+
+| 层级 | 技术 | 说明 |
+|------|------|------|
+| 前端 | React 19 + Vite 7 + TypeScript 5.9 | SPA，Vite 代理 REST 与 WebSocket |
+| UI | Tailwind CSS 4 + Framer Motion + Lucide | 深色科技风，Aceternity 风格背景组件 |
+| 后端 | Express 5 + TypeScript（tsx） | REST API + Socket.io 服务 |
+| AI | OpenRouter SDK（DeepSeek V3.2） | 查询扩展、内容分析；未配置时有降级逻辑 |
+| 采集 | axios + cheerio + twitterapi.io | 搜索引擎页面解析 + 平台公开 API |
+| 定时任务 | node-cron | 每 30 分钟巡检 |
+| 数据库 | SQLite + Prisma 6 | 4 张表，轻量本地存储 |
+| 实时通信 | Socket.io 4 | 按关键词房间推送新热点 |
+| 邮件 | Nodemailer | high/urgent 热点 HTML 邮件 |
+| 测试 | Vitest | AI 相关性与热点排序单测 |
+| 技能包 | Python（requests + beautifulsoup4） | 自包含 Agent Skills 采集脚本 |
+
+### 3.4 数据模型
+
+```
+Keyword  1 ──── * Hotspot        （关键词 → 热点，删除关键词时外键置空）
+Hotspot  1 ──── 0..1 Notification（热点 → 站内通知）
+Setting  独立键值表              （系统配置）
+```
+
+- **Keyword**：`text`(唯一)、`category`、`isActive`
+- **Hotspot**：标题、内容、URL、来源、真假、相关性、分析理由、重要性、摘要、互动/作者指标、关联关键词
+- **Notification**：`type`、标题、内容、`isRead`、关联热点
+- **Setting**：`key` / `value` 通用配置
+
+### 3.5 数据源
+
+| 来源 | 接入方式 | 备注 |
+|------|----------|------|
+| Twitter / X | twitterapi.io（需 Key） | Top 2 页 + Latest 1 页，本地质量过滤 |
+| Bing / Google / DuckDuckGo | 页面抓取 + cheerio | 随机 UA + 频率限制 |
+| HackerNews | Algolia 官方 API | 近 24h story |
+| 搜狗 | 页面抓取 | 替代百度，反爬较宽松 |
+| Bilibili | 公开 Web API | 视频搜索、用户搜索、账号投稿 |
+| 微博 | 热搜公开 API | 关键词匹配热搜话题 |
+
+> 默认巡检并行调用 Twitter / Bing / HackerNews / 搜狗 / Bilibili / 微博 六个源；Google、DuckDuckGo 的采集实现已内置于 `services/search.ts`。
+
+---
+
+## 四、项目结构
+
+```
+monitor/
+├── client/                         # 前端：React 19 + Vite
+│   └── src/
+│       ├── components/             # FilterSortBar 等通用组件
+│       │   └── ui/                 # 背景光束 / 流星 / 聚光灯等装饰组件
+│       ├── services/               # api.ts（REST） · socket.ts（WebSocket）
+│       ├── utils/                  # 排序、相对时间
+│       ├── App.tsx                 # 主应用（三个视图）
+│       └── main.tsx / index.css
+├── server/                         # 后端：Express 5 + Prisma
+│   ├── src/
+│   │   ├── routes/                 # keywords / hotspots / notifications / settings
+│   │   ├── services/               # ai / search / chinaSearch / twitter / email
+│   │   ├── jobs/hotspotChecker.ts  # 核心巡检编排
+│   │   ├── utils/sortHotspots.ts   # 重要性 / 热度内存排序
+│   │   ├── types.ts / db.ts / index.ts
+│   │   └── __tests__/              # Vitest 单测
+│   └── prisma/                     # schema + migrations
+├── skills/hot-monitor/             # Agent Skills 技能包
+│   ├── SKILL.md                    # 技能描述与工作流
+│   ├── references/                 # 数据源说明 / 分析指南
+│   └── scripts/                    # Python 采集与报告脚本
+├── docs/                           # 本地运行 / API / 需求文档
+└── README.md
+```
+
+---
+
+## 五、快速开始
 
 ### 前置条件
 
 - Node.js ≥ 18（推荐 20 LTS）
 - 一个 [OpenRouter API Key](https://openrouter.ai/settings/keys)（必需，用于 AI 分析）
 
-### 1. 克隆并安装依赖
+### 1. 安装依赖
 
 ```bash
-git clone https://github.com/liyupi/yupi-hot-monitor.git
-cd yupi-hot-monitor
-
 # 后端
-cd server
-npm install
-npx prisma generate
-npx prisma db push
+cd server && npm install && npx prisma generate && npx prisma db push
 
 # 前端
-cd ../client
-npm install
+cd ../client && npm install
 ```
 
 ### 2. 配置环境变量
@@ -157,49 +252,91 @@ npm install
 cp server/.env.example server/.env
 ```
 
-编辑 `server/.env`，至少填入 OpenRouter API Key：
+编辑 `server/.env`，至少填入 OpenRouter Key：
 
-```bash
+```env
+DATABASE_URL="file:./dev.db"
+PORT=3001
+CLIENT_URL=http://localhost:5173
 OPENROUTER_API_KEY=sk-or-v1-你的key
-# Twitter API Key（可选）
+# 可选：Twitter 采集
 TWITTER_API_KEY=你的key
+# 可选：邮件通知（high/urgent）
+SMTP_HOST=smtp.qq.com
+SMTP_PORT=465
+SMTP_SECURE=true
+SMTP_USER=你的邮箱
+SMTP_PASS=邮箱授权码
+NOTIFY_EMAIL=接收邮箱
 ```
 
 ### 3. 启动服务（两个终端）
 
 ```bash
-# 终端 1：启动后端（端口 3001）
+# 终端 1：后端（:3001）
 cd server && npm run dev
 
-# 终端 2：启动前端（端口 5173）
+# 终端 2：前端（:5173）
 cd client && npm run dev
 ```
 
-访问 **http://localhost:5173** ，输入关键词即可开始监控热点 🔥
+访问 **http://localhost:5173** 即可开始监控。
 
 | 服务 | 地址 |
 |------|------|
 | 前端页面 | http://localhost:5173 |
 | 后端 API | http://localhost:3001 |
-| 数据库管理 | `cd server && npx prisma studio`（可选） |
+| 健康检查 | http://localhost:3001/api/health |
+| 数据库管理 | `cd server && npx prisma studio` |
 
-更多细节请查看 [保姆级本地运行指南](docs/LOCAL_SETUP.md)。
+> 详细排错与保姆级步骤见 [docs/LOCAL_SETUP.md](docs/LOCAL_SETUP.md)。
 
+---
 
+## 六、API 接口速览
 
-## 加入项目学习
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| `GET` | `/api/keywords` | 关键词列表（含热点数） |
+| `POST` | `/api/keywords` | 新增关键词 |
+| `PUT` | `/api/keywords/:id` | 修改关键词 |
+| `PATCH` | `/api/keywords/:id/toggle` | 激活 / 暂停 |
+| `DELETE` | `/api/keywords/:id` | 删除关键词 |
+| `GET` | `/api/hotspots` | 热点列表（分页 / 筛选 / 排序） |
+| `GET` | `/api/hotspots/stats` | 统计数据 |
+| `POST` | `/api/hotspots/search` | 全网聚合搜索（不入库） |
+| `DELETE` | `/api/hotspots/:id` | 删除热点 |
+| `GET` | `/api/notifications` | 通知列表 + 未读数 |
+| `PATCH` | `/api/notifications/:id/read` | 单条已读 |
+| `PATCH` | `/api/notifications/read-all` | 全部已读 |
+| `GET/PUT` | `/api/settings` | 系统配置读写 |
+| `POST` | `/api/check-hotspots` | 手动触发一次巡检 |
 
-编程导航已有 **20+ 套项目教程**！每个项目的学习重点不同，几乎全都是前端 + 后端的 **全栈** 项目，也有大量 AI 应用开发项目。
+**WebSocket 事件**：客户端 `subscribe / unsubscribe`（按关键词订阅房间）；服务端推送 `hotspot:new`、`notification`。
 
-![](https://pic.yupi.icu/1/%25E9%25A1%25B9%25E7%259B%25AE%25E6%2595%2599%25E7%25A8%258B.png)
+---
 
-欢迎加入 [编程导航](https://www.codefather.cn/vip)，加入后不仅可以全程跟学本项目，往期 **20+ 套原创项目教程** 也都可以无限回看。还能享受更多原创技术资料、学习和求职指导、上百场面试回放视频，开启你的编程起飞之旅~
+## 七、Agent Skills 技能包
 
-🧧 助力新项目学习，给大家发放 **限时编程导航优惠券**，扫码即可领券加入。加入三天内不满意可全额退款，欢迎加入体验，名额有限，速来学习！
+`skills/hot-monitor` 是一个**无需后端、无需数据库**的独立技能包，可被主流 AI 编程工具加载：
 
-<img width="404" alt="image" src="https://github.com/user-attachments/assets/56411098-b60e-4267-8ba2-4ebc5d416afc" />
+```bash
+cd skills/hot-monitor
+pip install requests beautifulsoup4
+export TWITTER_API_KEY=your_key    # 可选
 
-1 天不到 1 块钱，绝对是对自己最值的投资！成为编程导航会员后，可以解锁 20 多套项目的教程和资料，PC 网站和 APP 都可以学习，如图：
+python scripts/search_web.py "AI programming" --sources bing,hackernews
+python scripts/search_china.py "AI编程" --sources sogou,bilibili,weibo
+python scripts/search_twitter.py "AI programming"    # 需 Key
+```
 
-![](https://pic.yupi.icu/1/image-20250120113756426-20250422160856746.png)
-# monitor
+脚本统一输出 JSON，Agent 依据 `references/analysis-guide.md` 自行完成真实性 / 相关性 / 重要性分析，并用 `generate_report.py` 生成 Markdown 报告。详见 [skills/hot-monitor/SKILL.md](skills/hot-monitor/SKILL.md)。
+
+---
+
+## 八、相关文档
+
+- [本地运行指南](docs/LOCAL_SETUP.md) — 环境准备与逐步启动
+- [API 接入说明](docs/API_INTEGRATION.md) — 接口对接细节
+- [需求文档](docs/REQUIREMENTS.md) — 功能需求来源
+- [Agent Skills](skills/hot-monitor/SKILL.md) — 技能包使用说明
