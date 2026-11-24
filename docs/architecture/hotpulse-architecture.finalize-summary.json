@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "skipped",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/candidate.json",
+    "sha256": "c1b8f346e1c97177b664599639d25af24a59aec6c6f67feb8753e60f43a9e1b9",
+    "bytes": 9765
+  },
+  "artifact": {
+    "path": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/hotpulse-architecture.html",
+    "sha256": "d842c8e1d5c0466add6aa77f22522fa99aa375989654412e23488edd1eba82bc",
+    "bytes": 774017
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "skipped"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/chrome-unavailable",
+      "severity": "warning",
+      "message": "Chrome or Chromium is unavailable. Set ARCHIFY_CHROME to its executable path.",
+      "subject": {
+        "artifact": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/hotpulse-architecture.html"
+      },
+      "evidence": {
+        "executable": null
+      },
+      "supportedFixes": [
+        "set ARCHIFY_CHROME to a Chrome or Chromium executable and rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/hotpulse-architecture.finalize.json",
+    "summaryReceipt": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/hotpulse-architecture.finalize-summary.json",
+    "browserCheckReceipt": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/hotpulse-architecture.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "cache-unavailable"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 385
+}

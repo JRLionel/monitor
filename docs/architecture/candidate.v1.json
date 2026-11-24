@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "HotPulse · AI 热点监控系统架构",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "output": ".archify/architecture-hotpulse-20261123-170446/hotpulse-architecture.html",
+    "repository": {
+      "url": "git@github.com:JRLionel/monitor.git",
+      "revision": "aff0ade2cb2c9277d76b579607071456d15354d4",
+      "link_mode": "local-only"
+    }
+  },
+  "components": [
+    {
+      "id": "operator",
+      "type": "external",
+      "label": "运营者",
+      "sublabel": "配置关键词 · 浏览热点",
+      "icon": "person",
+      "pos": [40, 380],
+      "size": [140, 64]
+    },
+    {
+      "id": "spa",
+      "type": "frontend",
+      "label": "React SPA",
+      "sublabel": "Vite :5173 · 3 视图",
+      "pos": [230, 380],
+      "size": [200, 64],
+      "sources": [
+        { "path": "client/src/App.tsx", "line": 49, "end_line": 66, "label": "三视图与状态" },
+        { "path": "client/src/App.tsx", "line": 102, "end_line": 135, "label": "订阅关键词 · WS 事件" },
+        { "path": "client/src/services/socket.ts", "line": 1, "end_line": 16, "label": "Socket.io 客户端" }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "Express API",
+      "sublabel": "REST /api · Socket.io",
+      "pos": [530, 380],
+      "size": [200, 64],
+      "sources": [
+        { "path": "server/src/index.ts", "line": 17, "end_line": 49, "label": "路由与手动触发" },
+        { "path": "server/src/index.ts", "line": 52, "end_line": 67, "label": "Socket.io 房间" },
+        { "path": "server/src/index.ts", "line": 83, "end_line": 85, "label": "监听 :3001" }
+      ]
+    },
+    {
+      "id": "checker",
+      "type": "backend",
+      "label": "巡检编排",
+      "sublabel": "hotspotChecker",
+      "pos": [810, 380],
+      "size": [190, 64],
+      "sources": [
+        { "path": "server/src/jobs/hotspotChecker.ts", "line": 40, "end_line": 57, "label": "巡检入口" },
+        { "path": "server/src/jobs/hotspotChecker.ts", "line": 84, "end_line": 91, "label": "6 源 allSettled" },
+        { "path": "server/src/jobs/hotspotChecker.ts", "line": 156, "end_line": 171, "label": "三层准入过滤" }
+      ]
+    },
+    {
+      "id": "collectors",
+      "type": "backend",
+      "label": "多源采集",
+      "sublabel": "6 源 · allSettled",
+      "pos": [1090, 380],
+      "size": [190, 96],
+      "sources": [
+        { "path": "server/src/jobs/hotspotChecker.ts", "line": 84, "end_line": 91, "label": "6 源并发" },
+        { "path": "server/src/services/search.ts", "line": 31, "end_line": 34, "label": "搜索引擎限流器" },
+        { "path": "server/src/services/chinaSearch.ts", "line": 31, "end_line": 33, "label": "国内源限流器" }
+      ]
+    },
+    {
+      "id": "ai",
+      "type": "backend",
+      "label": "AI 分析",
+      "sublabel": "OpenRouter SDK",
+      "pos": [810, 200],
+      "size": [190, 64],
+      "sources": [
+        { "path": "server/src/services/ai.ts", "line": 1, "end_line": 6, "label": "OpenRouter 客户端" },
+        { "path": "server/src/services/ai.ts", "line": 33, "end_line": 34, "label": "deepseek-v3.2" },
+        { "path": "server/src/services/ai.ts", "line": 151, "end_line": 165, "label": "无 Key 降级" }
+      ]
+    },
+    {
+      "id": "cron",
+      "type": "backend",
+      "label": "node-cron",
+      "sublabel": "每 30 分钟巡检",
+      "pos": [810, 560],
+      "size": [190, 64],
+      "sources": [
+        { "path": "server/src/index.ts", "line": 69, "end_line": 78, "label": "*/30 定时触发" }
+      ]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "SQLite",
+      "sublabel": "Prisma 6 · dev.db",
+      "pos": [530, 560],
+      "size": [200, 64],
+      "sources": [
+        { "path": "server/prisma/schema.prisma", "line": 8, "end_line": 11, "label": "SQLite 数据源" },
+        { "path": "server/prisma/schema.prisma", "line": 13, "end_line": 54, "label": "Keyword / Hotspot" },
+        { "path": "server/prisma/schema.prisma", "line": 56, "end_line": 70, "label": "Notification / Setting" }
+      ]
+    },
+    {
+      "id": "email",
+      "type": "backend",
+      "label": "邮件服务",
+      "sublabel": "Nodemailer · SMTP",
+      "pos": [1090, 560],
+      "size": [190, 64],
+      "sources": [
+        { "path": "server/src/services/email.ts", "line": 18, "end_line": 33, "label": "SMTP 连接配置" },
+        { "path": "server/src/services/email.ts", "line": 56, "end_line": 58, "label": "sendMail" }
+      ]
+    },
+    {
+      "id": "llm",
+      "type": "external",
+      "label": "OpenRouter",
+      "sublabel": "deepseek-v3.2",
+      "pos": [1370, 200],
+      "size": [180, 64],
+      "sources": [
+        { "path": "server/src/services/ai.ts", "line": 33, "end_line": 34, "label": "模型调用" },
+        { "path": "server/src/services/ai.ts", "line": 168, "end_line": 171, "label": "分析调用" }
+      ]
+    },
+    {
+      "id": "intl",
+      "type": "external",
+      "label": "国际信息源",
+      "sublabel": "twitterapi.io · Bing · HN",
+      "pos": [1370, 320],
+      "size": [180, 64],
+      "sources": [
+        { "path": "server/src/services/twitter.ts", "line": 3, "end_line": 3, "label": "twitterapi.io" },
+        { "path": "server/src/services/search.ts", "line": 44, "end_line": 44, "label": "Bing HTML" },
+        { "path": "server/src/services/search.ts", "line": 206, "end_line": 206, "label": "HN Algolia" }
+      ]
+    },
+    {
+      "id": "cn",
+      "type": "external",
+      "label": "中文信息源",
+      "sublabel": "搜狗 · B站 · 微博",
+      "pos": [1370, 440],
+      "size": [180, 64],
+      "sources": [
+        { "path": "server/src/services/chinaSearch.ts", "line": 46, "end_line": 46, "label": "搜狗" },
+        { "path": "server/src/services/chinaSearch.ts", "line": 178, "end_line": 178, "label": "B站 API" },
+        { "path": "server/src/services/chinaSearch.ts", "line": 346, "end_line": 346, "label": "微博热搜" }
+      ]
+    },
+    {
+      "id": "smtp",
+      "type": "external",
+      "label": "SMTP 邮箱",
+      "sublabel": "仅 high / urgent",
+      "pos": [1370, 560],
+      "size": [180, 64],
+      "sources": [
+        { "path": "server/src/services/email.ts", "line": 25, "end_line": 33, "label": "SMTP 传输" },
+        { "path": "server/src/services/email.ts", "line": 56, "end_line": 60, "label": "收件人 NOTIFY_EMAIL" }
+      ]
+    }
+  ],
+  "connections": [
+    { "id": "operator-opens-spa", "from": "operator", "to": "spa" },
+    { "id": "spa-rest-api", "from": "spa", "to": "api", "label": "REST /api" },
+    {
+      "id": "api-ws-push",
+      "from": "api",
+      "to": "spa",
+      "label": "WS 推送",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [[630, 300], [330, 300]]
+    },
+    { "id": "api-manual-check", "from": "api", "to": "checker", "label": "手动触发" },
+    { "id": "checker-collect", "from": "checker", "to": "collectors", "label": "6 源并行" },
+    { "id": "checker-analyze", "from": "checker", "to": "ai", "label": "逐条分析" },
+    { "id": "ai-llm", "from": "ai", "to": "llm", "label": "HTTPS" },
+    { "id": "collectors-intl", "from": "collectors", "to": "intl", "label": "抓取" },
+    { "id": "collectors-cn", "from": "collectors", "to": "cn", "label": "抓取" },
+    { "id": "api-store", "from": "api", "to": "store", "label": "Prisma 读写" },
+    { "id": "checker-store", "from": "checker", "to": "store", "label": "写入" },
+    { "id": "checker-email", "from": "checker", "to": "email", "label": "high/urgent" },
+    { "id": "email-smtp", "from": "email", "to": "smtp", "label": "SMTP" },
+    { "id": "cron-checker", "from": "cron", "to": "checker", "label": "每 30 分钟" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "采集与清洗",
+      "items": [
+        "6 源并行：Twitter、Bing、HackerNews、搜狗、B站、微博，Promise.allSettled 容错",
+        "去重 → 7 天新鲜度 → 来源优先级（Twitter > 微博 > B站 > HN > 搜狗 > Bing）",
+        "配额：Twitter 15 条，其余来源合计 10 条",
+        "Twitter 本地质量阈值：点赞 ≥10 · 转发 ≥5 · 浏览 ≥500 · 粉丝 ≥100"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "AI 分析与准入",
+      "items": [
+        "Query Expansion 生成关键词变体并缓存，先做文本预匹配",
+        "OpenRouter（deepseek-v3.2）逐条输出真实性、相关性、重要性与摘要",
+        "准入：丢弃 isReal=false、relevance<50、未提及关键词且 relevance<65",
+        "无 OPENROUTER_API_KEY 时降级为固定分（预匹配 50 / 未匹配 20），且不会触发邮件"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "通知三通道",
+      "items": [
+        "站内 Notification：每条入库热点写一条记录（hotspotId 无外键，删热点会留孤儿）",
+        "WebSocket：hotspot:new 定向 keyword:<词> 房间；notification 广播给全部连接",
+        "邮件：仅 importance 为 high/urgent，且 SMTP_* 与 NOTIFY_EMAIL 配齐时发送"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "运行边界与数据",
+      "items": [
+        "单进程：Express :3001 同时承载 REST、Socket.io 与 node-cron（*/30）",
+        "无鉴权；REST CORS 全开，Socket.io 仅允许 CLIENT_URL",
+        "SQLite dev.db + Prisma 6；Keyword 1—* Hotspot（删词 SetNull），Setting 仅键值 CRUD",
+        "开发期由 Vite :5173 代理 /api 与 /socket.io；服务端无静态托管，也无生产构建入口",
+        "skills/hot-monitor 是独立技能包（Python 脚本），不依赖服务端与数据库"
+      ]
+    }
+  ]
+}

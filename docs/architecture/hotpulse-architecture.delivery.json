@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "9b2d276e-7c10-4ca2-819b-8a490d60717f",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/candidate.json",
+  "output": "/Volumes/samsungt7/code/agent/monitor/.archify/architecture-hotpulse-20261123-170446/hotpulse-architecture.html",
+  "specification": {
+    "sha256": "e20103d0de6f75d8f8ff653ab4d97e9f1e4ca37e6e0d6f33564656782017aed9",
+    "bytes": 12317
+  },
+  "artifact": {
+    "sha256": "4f4e0c6afe110bbc8d247e8c4a2d79222da955b3e733fa5515164164bb4f6e8c",
+    "bytes": 773996
+  }
+}
