@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Flame, Search, Plus, Bell, Trash2, 
@@ -21,24 +21,9 @@ import { Meteors } from './components/ui/meteors';
 import FilterSortBar, { defaultFilterState, type FilterState } from './components/FilterSortBar';
 import SettingsPanel from './components/SettingsPanel';
 import EmailConfigPanel from './components/EmailConfigPanel';
-import { sortHotspots } from './utils/sortHotspots';
+import { sortHotspots, calcHotScore, hotScoreToDisplay } from './utils/sortHotspots';
 import { relativeTime, formatDateTime } from './utils/relativeTime';
 // TextGenerateEffect available for future use
-
-/** 计算热度综合指标（归一化 0-100） */
-function calcHeatScore(h: Hotspot): number {
-  const likes = h.likeCount ?? 0;
-  const retweets = h.retweetCount ?? 0;
-  const replies = h.replyCount ?? 0;
-  const comments = h.commentCount ?? 0;
-  const quotes = h.quoteCount ?? 0;
-  const views = h.viewCount ?? 0;
-  // 加权公式：转发最重、其次点赞、然后评论/回复
-  const raw = likes * 2 + retweets * 3 + replies * 1.5 + comments * 1.5 + quotes * 2 + views / 100;
-  // log 压缩到 0-100
-  if (raw <= 0) return 0;
-  return Math.min(100, Math.round(Math.log10(raw + 1) * 25));
-}
 
 function getHeatLevel(score: number): { label: string; color: string } {
   if (score >= 80) return { label: '爆', color: 'text-red-400' };
@@ -139,6 +124,8 @@ function App() {
   const [expandedReasons, setExpandedReasons] = useState<Set<string>>(new Set());
   const [expandedContents, setExpandedContents] = useState<Set<string>>(new Set());
   const [allReasonsExpanded, setAllReasonsExpanded] = useState(false);
+  // 请求序号：只应用最新一次请求的结果，避免旧页码/旧筛选的响应覆盖新数据
+  const loadSeqRef = useRef(0);
 
   const totalSourceCount = DATA_SOURCES.reduce(
     (sum, s) => sum + (stats?.bySource?.[s.key] ?? 0),
@@ -147,6 +134,7 @@ function App() {
 
   // 加载数据
   const loadData = useCallback(async () => {
+    const seq = ++loadSeqRef.current;
     setIsLoading(true);
     try {
       const filterParams: Record<string, string | number> = {
@@ -168,6 +156,10 @@ function App() {
         hotspotsApi.getStats(),
         notificationsApi.getAll({ limit: 20 })
       ]);
+
+      // 若已有更新的请求发出，丢弃本次（过期）结果
+      if (seq !== loadSeqRef.current) return;
+
       setKeywords(keywordsData);
       setHotspots(hotspotsData.data);
       setTotalPages(hotspotsData.pagination.totalPages);
@@ -181,16 +173,21 @@ function App() {
         subscribeToKeywords(activeKeywords);
       }
     } catch (error) {
-      console.error('Failed to load data:', error);
+      if (seq === loadSeqRef.current) {
+        console.error('Failed to load data:', error);
+      }
     } finally {
-      setIsLoading(false);
+      if (seq === loadSeqRef.current) {
+        setIsLoading(false);
+      }
     }
   }, [dashboardFilters, currentPage]);
 
-  // 当筛选条件变化时重置页码
-  useEffect(() => {
+  // 筛选条件变化时重置页码（与筛选同批更新，避免用旧页码多发一次请求）
+  const handleDashboardFilterChange = (next: FilterState) => {
+    setDashboardFilters(next);
     setCurrentPage(1);
-  }, [dashboardFilters]);
+  };
 
   useEffect(() => {
     loadData();
@@ -631,7 +628,7 @@ function App() {
               <div className="mb-5">
                 <FilterSortBar
                   filters={dashboardFilters}
-                  onChange={setDashboardFilters}
+                  onChange={handleDashboardFilterChange}
                   keywords={keywords}
                 />
               </div>
@@ -664,7 +661,7 @@ function App() {
                   )}
 
                   {hotspots.map((hotspot, index) => {
-                    const heatScore = calcHeatScore(hotspot);
+                    const heatScore = hotScoreToDisplay(calcHotScore(hotspot));
                     const heat = getHeatLevel(heatScore);
                     return (
                     <motion.div
@@ -1099,7 +1096,7 @@ function App() {
                 </div>
               )}
               {filteredSearchResults.map((hotspot, i) => {
-                const heatScore = calcHeatScore(hotspot);
+                const heatScore = hotScoreToDisplay(calcHotScore(hotspot));
                 const heat = getHeatLevel(heatScore);
                 return (
                 <motion.div 

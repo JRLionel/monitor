@@ -130,10 +130,9 @@ export async function runHotspotCheck(io: Server): Promise<void> {
       const OTHER_QUOTA = 10;
 
       for (const item of sortedResults) {
-        // 检查配额
+        // 检查配额（按“实际处理条数”计，避免过滤后继续无限调用 AI）
         if (item.source === 'twitter' && twitterProcessed >= TWITTER_QUOTA) continue;
         if (item.source !== 'twitter' && otherProcessed >= OTHER_QUOTA) continue;
-        if (twitterProcessed + otherProcessed >= TWITTER_QUOTA + OTHER_QUOTA) break;
         try {
           // 检查是否已存在
           const existing = await prisma.hotspot.findFirst({
@@ -146,6 +145,10 @@ export async function runHotspotCheck(io: Server): Promise<void> {
           if (existing) {
             continue;
           }
+
+          // 进入处理流程即消耗配额（已入库的条目除外）
+          if (item.source === 'twitter') twitterProcessed++;
+          else otherProcessed++;
 
           // AI 分析（传入关键词和预匹配结果）
           const fullText = item.title + '\n' + item.content;
@@ -205,8 +208,6 @@ export async function runHotspotCheck(io: Server): Promise<void> {
           });
 
           newHotspotsCount++;
-          if (item.source === 'twitter') twitterProcessed++;
-          else otherProcessed++;
           console.log(`  ✅ New hotspot [${item.source}]: ${hotspot.title.slice(0, 40)}... (${analysis.importance})`);
 
           // 创建通知

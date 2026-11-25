@@ -26,6 +26,15 @@ export function calcHotScore(item: SortableHotspot): number {
   return likes * 10 + retweets * 5 + Math.log10(Math.max(views, 1)) * 2;
 }
 
+/**
+ * 将热度综合分映射为 0-100 的展示分
+ * 与 calcHotScore 同源且单调递增，保证"热度综合"排序与界面展示分数口径一致
+ */
+export function hotScoreToDisplay(score: number): number {
+  if (score <= 0) return 0;
+  return Math.min(100, Math.round(Math.log10(score + 1) * 20));
+}
+
 export function compareImportance(a: SortableHotspot, b: SortableHotspot): number {
   return (IMPORTANCE_ORDER[a.importance] ?? 4) - (IMPORTANCE_ORDER[b.importance] ?? 4);
 }
