@@ -29,18 +29,15 @@ cd yupi-hot-monitor
 
 ## 第二步：获取 API Key
 
-项目需要 **1 个必需的 API Key**，另外 2 个为可选。
+项目支持三家模型服务商，**任选其一**配置即可；都不配置时 AI 分析会使用内置降级逻辑，采集与推送功能不受影响。
 
-### ✅ 必需：OpenRouter API Key
+| 厂商 | 获取地址 | 环境变量 | 说明 |
+|------|----------|----------|------|
+| DeepSeek | [platform.deepseek.com/api_keys](https://platform.deepseek.com/api_keys) | `DEEPSEEK_API_KEY` | 默认厂商，OpenAI 兼容 |
+| 小米 MiMo | [platform.xiaomimimo.com](https://platform.xiaomimimo.com/#/console/api-keys) | `MIMO_API_KEY` | OpenAI 兼容 |
+| OpenCode Go | [opencode.ai/console](https://opencode.ai/console) | `OPENCODE_API_KEY` | Go 套餐，key 以 `oc_sk_` 开头 |
 
-OpenRouter 是一个统一的 AI 大模型接入平台，注册即可使用。
-
-1. 打开 [https://openrouter.ai/](https://openrouter.ai/)，注册并登录
-2. 进入 [API Keys 页面](https://openrouter.ai/settings/keys)
-3. 点击 **Create Key**，复制生成的 Key（以 `sk-or-v1-` 开头）
-4. 确保账户有一定额度（新用户通常有免费额度）
-
-> 💡 如果账户没有额度，需要在 [Credits 页面](https://openrouter.ai/settings/credits) 充值少量金额（几美元即可用很久）。
+> 💡 也可以不写环境变量，启动后在页面「模型服务」中选择厂商并填入密钥即可，配置会保存到数据库，优先级高于环境变量。填完后点一次「检测连接」可以验证是否可用。
 
 ### 🔧 可选：Twitter API Key
 
@@ -79,8 +76,10 @@ DATABASE_URL="file:./dev.db"
 PORT=3001
 CLIENT_URL=http://localhost:5173
 
-# ✅ 必填：OpenRouter AI
-OPENROUTER_API_KEY=sk-or-v1-你的key粘贴到这里
+# 🔧 选填：模型服务（三选一，也可以启动后在页面「模型服务」里配置）
+DEEPSEEK_API_KEY=
+MIMO_API_KEY=
+OPENCODE_API_KEY=
 
 # 🔧 选填：Twitter API（不填则不抓取 Twitter 数据）
 TWITTER_API_KEY=你的twitter_api_key
@@ -212,7 +211,7 @@ npx prisma generate
 ### Q3：热点搜索没有结果
 
 **可能原因**：
-1. OpenRouter API Key 未填写或额度不足 → 检查 `.env` 中的 `OPENROUTER_API_KEY`
+1. 模型服务未配置或额度不足 → 打开页面「模型服务」，点击任一模型的「检测连接」查看具体原因
 2. 关键词太冷门 → 尝试更热门的关键词，如 "AI"、"ChatGPT"
 3. 网络问题导致搜索引擎爬虫失败 → 检查终端日志中是否有报错信息
 

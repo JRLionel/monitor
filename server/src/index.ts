@@ -9,7 +9,9 @@ import { prisma } from './db.js';
 import keywordsRouter from './routes/keywords.js';
 import hotspotsRouter from './routes/hotspots.js';
 import settingsRouter from './routes/settings.js';
+import aiRouter from './routes/ai.js';
 import notificationsRouter from './routes/notifications.js';
+import emailRouter from './routes/email.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
 
 dotenv.config();
@@ -31,7 +33,9 @@ app.use(express.json());
 app.use('/api/keywords', keywordsRouter);
 app.use('/api/hotspots', hotspotsRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/ai', aiRouter);
 app.use('/api/notifications', notificationsRouter);
+app.use('/api/email', emailRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

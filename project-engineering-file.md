@@ -12,7 +12,7 @@
 | UI | Tailwind CSS / Framer Motion / lucide-react | 4.1 / 12.31 / 0.563 |
 | 后端 | Express / TypeScript / tsx | 5.2 / 5.9 / 4.21 |
 | ORM/DB | Prisma / SQLite | 6.19 / file:./dev.db |
-| AI | @openrouter/sdk（DeepSeek V3.2） | 0.5.1 |
+| AI | 自研多厂商 Provider（OpenAI 兼容 HTTP，无 SDK） | — |
 | 采集 | axios / cheerio / twitterapi.io | 1.13 / 1.1 / — |
 | 实时 | socket.io / socket.io-client | 4.8.3 |
 | 邮件 | nodemailer | 8.0 |
@@ -22,7 +22,7 @@
 ## 3. 架构决策记录（ADR，只增不删）
 - **ADR-001 模块化单体**：前后端分离但后端保持单体分层（routes/services/jobs）。理由：单用户工具、规模小，微服务属过度设计。代价：单体随功能扩张会变大。状态：有效。
 - **ADR-002 SQLite + Prisma**：本地轻量存储。理由：零运维、单用户足够。代价：不支持并发写与多机部署。状态：有效；多用户/上云时需替换为 PG/MySQL。
-- **ADR-003 AI 通过 OpenRouter 统一接入**：屏蔽模型厂商差异，默认 deepseek/deepseek-v3.2。理由：易切换模型、成本低。代价：依赖外部 API 与额度；已实现无 Key 降级逻辑。状态：有效。
+- **ADR-003 AI 通过自研多厂商 Provider 统一接入**：以 OpenAI 兼容 Chat Completions 为内部协议，`catalog.ts` 描述厂商差异，`openaiCompatible.ts` 统一发请求，默认 DeepSeek `deepseek-flash`；支持 DeepSeek / 小米 MiMo / OpenCode Go 在页面切换。理由：不绑定单一厂商、不引入 SDK 依赖、新增厂商只改配置。代价：依赖外部 API 与额度；已实现无 Key 降级逻辑。状态：有效（取代原 OpenRouter 方案）。
 - **ADR-004 多源并行 + 容错采集**：`Promise.allSettled` 并发，单源失败不影响整体；各源独立 RateLimiter + 随机 UA。理由：稳定性与反爬。代价：抓取结果受各平台页面结构影响，易失效。状态：有效。
 - **ADR-005 Query Expansion + 阈值过滤降本提精**：AI 先扩展关键词变体做文本预匹配，再以 isReal / relevance≥50 / 提及判断三层过滤。理由：减少无效 AI 调用、提升精度。代价：阈值需按场景调优。状态：有效。
 - **ADR-006 WebSocket 按关键词房间推送**：客户端订阅 `keyword:<词>` 房间，服务端定向 emit `hotspot:new`。理由：避免广播无关热点。状态：有效。
@@ -45,14 +45,15 @@
 - **关键词**：`GET/POST /keywords`、`PUT/DELETE /keywords/:id`、`PATCH /keywords/:id/toggle`；text 唯一，重复返回 409。
 - **热点**：`GET /hotspots`（query: page,limit,source,importance,keywordId,isReal,timeRange,sortBy,sortOrder；返回 `{data, pagination}`）、`GET /hotspots/stats`、`POST /hotspots/search`（body: `{query, sources}`）、`DELETE /hotspots/:id`。
 - **通知**：`GET /notifications`（返回 `{data, unreadCount, pagination}`）、`PATCH /notifications/:id/read`、`PATCH /notifications/read-all`、`DELETE /notifications/:id`、`DELETE /notifications`。
-- **设置**：`GET/PUT /settings`（键值 map）、`GET/PUT /settings/:key`。
+- **设置**：`GET/PUT /settings`（键值 map，密钥类字段返回掩码）、`GET/PUT /settings/:key`。
+- **模型服务**：`GET /ai/providers`（厂商与模型清单、配置状态）、`PUT /ai/config`（保存厂商/模型/密钥）、`POST /ai/test`（健康检测，返回 `ok`、`latencyMs` 或错误原因）。
 - **运维**：`GET /health`、`POST /check-hotspots`（同步执行巡检）。
 - **WebSocket**：客户端 `subscribe(keywords[])` / `unsubscribe(keywords[])`；服务端事件 `hotspot:new`、`notification`。
 
 ## 6. 已知风险
 - 采集依赖各平台页面 DOM 结构与公开 API，平台改版会导致解析失效（需定期验证）。
 - SQLite 单机文件存储，不适合多用户并发 / 上云；ADR-002 已标注迁移触发条件。
-- AI 分析为单次调用 + 无重试队列；OpenRouter 额度耗尽或超时会降级为低分兜底，影响精度。
+- AI 分析为单次调用 + 无重试队列；所选厂商额度耗尽或超时会降级为低分兜底，影响精度。
 - 巡检为串行遍历关键词、每词 2s 间隔，关键词数量大时单次耗时线性增长。
 - 单测覆盖不足（仅 2 个测试文件），无端到端测试。
 

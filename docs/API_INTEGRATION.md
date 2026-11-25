@@ -1,86 +1,76 @@
 # 🔌 API 集成技术文档
 
-## 1. OpenRouter API 集成
+## 1. 大模型服务（多厂商 Provider）
 
-### 1.1 SDK 安装
+项目不依赖任何厂商 SDK，统一走 OpenAI 兼容的 HTTP 接口（Node 内置 `fetch`），只维护一个适配器。
 
-```bash
-npm install @openrouter/sdk
+### 1.1 支持的厂商
+
+| 厂商 | ID | 请求地址 | 鉴权 | 模型 |
+|------|----|----------|------|------|
+| DeepSeek | `deepseek` | `https://api.deepseek.com/chat/completions` | `Authorization: Bearer` | `deepseek-flash`、`deepseek-v4-pro` |
+| 小米 MiMo | `xiaomi` | `https://api.xiaomimimo.com/v1/chat/completions` | `api-key` 或 Bearer | `mimo-v2.6-flash`、`mimo-v2.6-pro`、`mimo-v2.6-pro-ultraspeed` |
+| OpenCode Go | `opencode-go` | `https://opencode.ai/inference/go/openai/v1/chat/completions` | `Authorization: Bearer` + `x-opencode-session` | `deepseek-v4.1-flash`、`glm-5.3`、`kimi-k3` |
+
+### 1.2 目录结构
+
+```
+server/src/services/llm/
+├── types.ts               # 内部协议：ChatMessage / ChatProvider / ProviderMeta
+├── catalog.ts             # 厂商与模型目录，新增厂商只改这里
+├── openaiCompatible.ts    # 统一适配器：鉴权头、token 参数名、超时、错误解析
+└── registry.ts            # 读写配置、密钥优先级、健康检测
 ```
 
-### 1.2 基本配置
+### 1.3 配置方式
+
+推荐在页面「模型服务」中配置，写入 `Setting` 表；环境变量作为兜底，优先级为 **数据库 > 环境变量 > 未配置（走降级逻辑）**。
+
+| 配置项 | 说明 |
+|--------|------|
+| `ai.provider` | 当前启用的厂商 ID |
+| `ai.<provider>.apiKey` | 该厂商密钥 |
+| `ai.<provider>.model` | 该厂商选中的模型 |
+| `ai.opencode-go.sessionId` | 首次调用自动生成的 `ses_xxx`，后续复用 |
+
+对应环境变量（可选）：`DEEPSEEK_API_KEY`、`MIMO_API_KEY`、`OPENCODE_API_KEY`。
+
+### 1.4 调用示例
 
 ```typescript
-import { OpenRouter } from "@openrouter/sdk";
+import { getChatProvider } from './llm/registry.js';
 
-const openRouter = new OpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY ?? "",
+const active = await getChatProvider();
+if (!active) {
+  // 未配置任何厂商，走原有降级分析
+  return fallbackAnalysis();
+}
+
+const text = await active.provider.chat({
+  model: active.model,
+  messages: [
+    { role: 'system', content: prompt },
+    { role: 'user', content: content.slice(0, 2000) }
+  ],
+  temperature: 0.2,
+  maxTokens: 500
 });
 ```
 
-### 1.3 Chat Completion 调用
+各厂商的差异（鉴权头、`max_tokens` / `max_completion_tokens`、关闭思考模式的额外参数）全部由适配器吸收，业务层无需感知。
 
-```typescript
-// 非流式调用
-async function analyzeHotspot(content: string) {
-  const result = await openRouter.chat.send({
-    model: "openai/gpt-4",
-    messages: [
-      {
-        role: "system",
-        content: `你是一个热点分析专家，请分析以下内容：
-1. 判断是否为真实的热点新闻（排除标题党、假新闻）
-2. 评估该热点与 AI 编程领域的相关性（0-100分）
-3. 评估热点的重要程度（low/medium/high/urgent）
-4. 生成简短摘要（50字以内）
+### 1.5 新增厂商
 
-输出 JSON 格式：
-{
-  "isReal": true/false,
-  "relevance": 0-100,
-  "importance": "low/medium/high/urgent",
-  "summary": "..."
-}`
-      },
-      {
-        role: "user",
-        content: content
-      }
-    ],
-    stream: false,
-    temperature: 0.3,
-    maxTokens: 500
-  });
+只需在 `catalog.ts` 增加一项（基址、鉴权方式、token 参数名、模型列表）。提供 OpenAI 兼容接口的厂商不需要写任何新代码；如果协议不同，再补一个适配器即可。
 
-  return JSON.parse(result.choices[0].message.content);
-}
-```
+### 1.6 管理接口
 
-### 1.4 响应格式
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/ai/providers` | 厂商列表、配置状态、模型清单（密钥已脱敏） |
+| PUT | `/api/ai/config` | 保存当前厂商 / 模型 / 密钥 |
+| POST | `/api/ai/test` | 健康检测，返回 `ok`、`latencyMs` 或错误原因 |
 
-```json
-{
-  "id": "chatcmpl-xxxxxxxxxxxxxxxxx",
-  "object": "chat.completion",
-  "created": 1677652288,
-  "model": "openai/gpt-4",
-  "choices": [
-    {
-      "index": 0,
-      "message": {
-        "role": "assistant",
-        "content": "{\"isReal\": true, \"relevance\": 85, \"importance\": \"high\", \"summary\": \"...\"}"
-      },
-      "finish_reason": "stop"
-    }
-  ],
-  "usage": {
-    "prompt_tokens": 10,
-    "completion_tokens": 15,
-    "total_tokens": 25
-  }
-}
-```
 
 ---
 

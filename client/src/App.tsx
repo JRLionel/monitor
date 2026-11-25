@@ -6,7 +6,8 @@ import {
   Zap, TrendingUp, Twitter, Globe, Eye, Activity, Clock, Target,
   ChevronLeft, ChevronRight,
   MessageCircle, Repeat2, Quote, User, Shield, ShieldAlert,
-  ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText
+  ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText,
+  Settings as SettingsIcon, Database, Mail
 } from 'lucide-react';
 import { 
   keywordsApi, hotspotsApi, notificationsApi, triggerHotspotCheck,
@@ -18,6 +19,8 @@ import { Spotlight } from './components/ui/spotlight';
 import { BackgroundBeams } from './components/ui/background-beams';
 import { Meteors } from './components/ui/meteors';
 import FilterSortBar, { defaultFilterState, type FilterState } from './components/FilterSortBar';
+import SettingsPanel from './components/SettingsPanel';
+import EmailConfigPanel from './components/EmailConfigPanel';
 import { sortHotspots } from './utils/sortHotspots';
 import { relativeTime, formatDateTime } from './utils/relativeTime';
 // TextGenerateEffect available for future use
@@ -45,6 +48,74 @@ function getHeatLevel(score: number): { label: string; color: string } {
   return { label: '冷', color: 'text-slate-500' };
 }
 
+/** 当前巡检实际启用的数据来源 */
+const DATA_SOURCES: {
+  key: string;
+  name: string;
+  category: string;
+  description: string;
+  method: string;
+  url: string;
+  accent: string;
+  requiresKey?: boolean;
+}[] = [
+  {
+    key: 'twitter',
+    name: 'Twitter / X',
+    category: '社交平台',
+    description: '通过 twitterapi.io 高级搜索抓取推文，按点赞 / 转发 / 浏览 / 粉丝门槛做本地质量过滤。',
+    method: '接入方式：第三方 API（需 Key）',
+    url: 'https://x.com',
+    accent: 'bg-sky-500/10 border-sky-500/20 text-sky-400',
+    requiresKey: true
+  },
+  {
+    key: 'weibo',
+    name: '微博热搜',
+    category: '热搜榜',
+    description: '拉取微博热搜公开接口，将关键词与实时热搜话题做匹配。',
+    method: '接入方式：公开 API',
+    url: 'https://s.weibo.com/top/summary',
+    accent: 'bg-orange-500/10 border-orange-500/20 text-orange-400'
+  },
+  {
+    key: 'bilibili',
+    name: 'Bilibili',
+    category: '视频平台',
+    description: '调用公开 Web API 搜索视频，并自动识别同名 UP 主、抓取其最新投稿。',
+    method: '接入方式：公开 Web API',
+    url: 'https://www.bilibili.com',
+    accent: 'bg-pink-500/10 border-pink-500/20 text-pink-400'
+  },
+  {
+    key: 'sogou',
+    name: '搜狗搜索',
+    category: '搜索引擎',
+    description: '抓取搜狗网页搜索结果，覆盖中文站点与资讯。',
+    method: '接入方式：页面抓取 + cheerio',
+    url: 'https://www.sogou.com',
+    accent: 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+  },
+  {
+    key: 'bing',
+    name: 'Bing',
+    category: '搜索引擎',
+    description: '抓取 Bing 网页搜索结果，覆盖国际站点与资讯。',
+    method: '接入方式：页面抓取 + cheerio',
+    url: 'https://www.bing.com',
+    accent: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-400'
+  },
+  {
+    key: 'hackernews',
+    name: 'Hacker News',
+    category: '技术社区',
+    description: '通过 Algolia 官方 API 检索近 24 小时的技术社区 story。',
+    method: '接入方式：官方 API',
+    url: 'https://news.ycombinator.com',
+    accent: 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+  }
+];
+
 function App() {
   const [keywords, setKeywords] = useState<Keyword[]>([]);
   const [hotspots, setHotspots] = useState<Hotspot[]>([]);
@@ -57,7 +128,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'keywords' | 'search'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'keywords' | 'search' | 'sources' | 'settings' | 'email'>('dashboard');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [dashboardFilters, setDashboardFilters] = useState<FilterState>({ ...defaultFilterState });
   const [searchFilters, setSearchFilters] = useState<FilterState>({ ...defaultFilterState });
@@ -68,6 +139,11 @@ function App() {
   const [expandedReasons, setExpandedReasons] = useState<Set<string>>(new Set());
   const [expandedContents, setExpandedContents] = useState<Set<string>>(new Set());
   const [allReasonsExpanded, setAllReasonsExpanded] = useState(false);
+
+  const totalSourceCount = DATA_SOURCES.reduce(
+    (sum, s) => sum + (stats?.bySource?.[s.key] ?? 0),
+    0
+  );
 
   // 加载数据
   const loadData = useCallback(async () => {
@@ -450,6 +526,9 @@ function App() {
             { key: 'dashboard', label: '热点雷达', icon: Activity },
             { key: 'keywords', label: '监控词', icon: Target },
             { key: 'search', label: '搜索', icon: Search },
+            { key: 'sources', label: '数据来源', icon: Database },
+            { key: 'settings', label: '模型服务', icon: SettingsIcon },
+            { key: 'email', label: '邮件通知', icon: Mail },
           ] as const).map(({ key, label, icon: Icon }) => (
             <button
               key={key}
@@ -1113,6 +1192,108 @@ function App() {
               })}
             </div>
           </div>
+        )}
+
+        {/* 数据来源 Tab */}
+        {activeTab === 'sources' && (
+          <div className="space-y-6">
+            {/* Summary */}
+            <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                  <Database className="w-5 h-5 text-blue-400" />
+                  当前数据来源
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  每次巡检会并行抓取以下 {DATA_SOURCES.length} 个来源，单源失败不影响其他来源
+                </p>
+              </div>
+              <div className="flex items-center gap-8">
+                <div>
+                  <p className="text-xs text-slate-500">已接入来源</p>
+                  <p className="text-2xl font-bold text-white">{DATA_SOURCES.length}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500">累计采集</p>
+                  <p className="text-2xl font-bold text-blue-400">{totalSourceCount.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Source list */}
+            <div className="space-y-3">
+              {DATA_SOURCES.map((source, index) => {
+                const count = stats?.bySource?.[source.key] ?? 0;
+                return (
+                  <motion.div
+                    key={source.key}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.04 }}
+                    className="group p-4 rounded-2xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/5 hover:border-white/10 transition-all"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center border shrink-0",
+                        source.accent
+                      )}>
+                        {getSourceIcon(source.key)}
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-medium text-white">{source.name}</h3>
+                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-slate-400">
+                            {source.category}
+                          </span>
+                          <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            已启用
+                          </span>
+                          {source.requiresKey && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                              需 API Key
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-500 mt-1.5">{source.description}</p>
+                        <p className="text-[11px] text-slate-600 mt-1">{source.method}</p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <p className="text-lg font-semibold text-white">{count.toLocaleString()}</p>
+                        <p className="text-[10px] text-slate-600">已采集</p>
+                      </div>
+
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`打开 ${source.name}`}
+                        className="p-2 rounded-xl bg-white/5 hover:bg-blue-500/20 text-slate-500 hover:text-blue-400 transition-all shrink-0"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            <p className="text-xs text-slate-600">
+              另有 Google、DuckDuckGo 采集器已内置在服务端，但当前未接入默认巡检。
+            </p>
+          </div>
+        )}
+
+        {/* 模型服务 Tab */}
+        {activeTab === 'settings' && (
+          <SettingsPanel onToast={showToast} />
+        )}
+
+        {/* 邮件通知 Tab */}
+        {activeTab === 'email' && (
+          <EmailConfigPanel onToast={showToast} />
         )}
       </main>
     </div>

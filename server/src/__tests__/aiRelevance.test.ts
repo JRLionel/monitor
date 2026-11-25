@@ -7,14 +7,18 @@
  * 运行方式：
  *   npx vitest run src/__tests__/aiRelevance.test.ts
  * 
- * 注意：需要配置 OPENROUTER_API_KEY 环境变量才能调用真实 AI。
+ * 注意：需要配置任意一家模型服务商的 API Key 环境变量才能调用真实 AI。
  * 如果未配置，测试会跳过（不会失败）。
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
 
-const HAS_API_KEY = !!process.env.OPENROUTER_API_KEY;
+const HAS_API_KEY = !!(
+  process.env.DEEPSEEK_API_KEY ||
+  process.env.MIMO_API_KEY ||
+  process.env.OPENCODE_API_KEY
+);
 
 // ========== 测试用例定义 ==========
 
@@ -248,11 +252,26 @@ describe.skipIf(!HAS_API_KEY)('AI 相关性判断准确度（真实 AI 调用）
 
 // ========== 无 API 时的 fallback 行为测试 ==========
 
+/** 临时清空三家厂商的环境变量，返回恢复函数 */
+function clearProviderEnv(): () => void {
+  const keys = ['DEEPSEEK_API_KEY', 'MIMO_API_KEY', 'OPENCODE_API_KEY'] as const;
+  const saved = keys.map(key => [key, process.env[key]] as const);
+  keys.forEach(key => {
+    delete process.env[key];
+  });
+
+  return () => {
+    saved.forEach(([key, value]) => {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    });
+  };
+}
+
 describe('AI Fallback 行为（无 API Key）', () => {
   it('preMatch=true 时 fallback 给出较高默认分', async () => {
-    // 临时清空 API key 测试 fallback
-    const originalKey = process.env.OPENROUTER_API_KEY;
-    process.env.OPENROUTER_API_KEY = '';
+    // 临时清空三家厂商的 Key 测试 fallback
+    const restore = clearProviderEnv();
     
     try {
       const result = await analyzeContent(
@@ -263,13 +282,12 @@ describe('AI Fallback 行为（无 API Key）', () => {
       expect(result.relevance).toBe(50);
       expect(result.keywordMentioned).toBe(true);
     } finally {
-      process.env.OPENROUTER_API_KEY = originalKey || '';
+      restore();
     }
   });
 
   it('preMatch=false 时 fallback 给出较低默认分', async () => {
-    const originalKey = process.env.OPENROUTER_API_KEY;
-    process.env.OPENROUTER_API_KEY = '';
+    const restore = clearProviderEnv();
     
     try {
       const result = await analyzeContent(
@@ -280,7 +298,7 @@ describe('AI Fallback 行为（无 API Key）', () => {
       expect(result.relevance).toBe(20);
       expect(result.keywordMentioned).toBe(false);
     } finally {
-      process.env.OPENROUTER_API_KEY = originalKey || '';
+      restore();
     }
   });
 });

@@ -100,16 +100,18 @@
 
 ## 5. AI 分析规格
 
-### 5.1 OpenRouter 集成
+### 5.1 大模型服务集成（多厂商）
 
 **用途：**
 1. **真假识别** - 判断内容是否为假冒/标题党
 2. **热点分析** - 评估热点价值和相关性
 3. **内容摘要** - 生成热点摘要
 
-**模型选择：**
-- 主模型：Claude 或 GPT-4
-- 备用模型：Gemini
+**厂商与模型：**
+- 支持 DeepSeek（`deepseek-flash`、`deepseek-v4-pro`）
+- 支持小米 MiMo（`mimo-v2.6-flash`、`mimo-v2.6-pro`、`mimo-v2.6-pro-ultraspeed`）
+- 支持 OpenCode Go（`deepseek-v4.1-flash`、`glm-5.3`、`kimi-k3`）
+- 用户在页面「模型服务」中任选一家并填写密钥，切换后立即生效；未配置时走降级逻辑
 
 **Prompt 设计：**
 ```

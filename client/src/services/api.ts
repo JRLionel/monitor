@@ -181,6 +181,153 @@ export const settingsApi = {
     })
 };
 
+// AI 模型服务 API
+export interface AIModelMeta {
+  id: string;
+  label: string;
+  description: string;
+  recommended?: boolean;
+  capabilities: string[];
+}
+
+export interface AIProviderStatus {
+  id: string;
+  name: string;
+  docsUrl?: string;
+  keyPlaceholder?: string;
+  hasKey: boolean;
+  apiKeyMasked: string;
+  configured: boolean;
+  selectedModel: string;
+  models: AIModelMeta[];
+}
+
+export interface AIProvidersResponse {
+  active: string;
+  providers: AIProviderStatus[];
+}
+
+export interface AIConnectionResult {
+  ok: boolean;
+  latencyMs?: number;
+  model?: string;
+  sample?: string;
+  error?: string;
+}
+
+export const aiApi = {
+  getProviders: () => request<AIProvidersResponse>('/ai/providers'),
+
+  saveConfig: (data: { provider: string; model?: string; apiKey?: string }) =>
+    request<AIProvidersResponse>('/ai/config', {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
+  test: (data: { provider: string; model?: string; apiKey?: string }) =>
+    request<AIConnectionResult>('/ai/test', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+};
+
 // Manual trigger
 export const triggerHotspotCheck = () => 
   request<{ message: string }>('/check-hotspots', { method: 'POST' });
+
+// ========== 邮件通知配置 ==========
+
+// 发件 SMTP 账户（password 为掩码值）
+export interface EmailAccount {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  secure: boolean;
+  username: string;
+  password: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 收件邮箱
+export interface EmailRecipient {
+  id: string;
+  name: string | null;
+  address: string;
+  isEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmailAccountInput {
+  name: string;
+  host: string;
+  port?: number;
+  secure?: boolean;
+  username: string;
+  password?: string; // 编辑时留空表示保留原密码
+  isActive?: boolean;
+}
+
+export interface EmailRecipientInput {
+  address: string;
+  name?: string;
+  isEnabled?: boolean;
+}
+
+export interface EmailTestResult {
+  ok: boolean;
+  sent?: number;
+  error?: string;
+}
+
+export const emailApi = {
+  accounts: {
+    getAll: () => request<EmailAccount[]>('/email/accounts'),
+
+    create: (data: EmailAccountInput) =>
+      request<EmailAccount>('/email/accounts', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    update: (id: string, data: Partial<EmailAccountInput>) =>
+      request<EmailAccount>(`/email/accounts/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    activate: (id: string) =>
+      request<EmailAccount>(`/email/accounts/${id}/activate`, { method: 'PATCH' }),
+
+    remove: (id: string) =>
+      request<void>(`/email/accounts/${id}`, { method: 'DELETE' }),
+  },
+
+  recipients: {
+    getAll: () => request<EmailRecipient[]>('/email/recipients'),
+
+    create: (data: EmailRecipientInput) =>
+      request<EmailRecipient>('/email/recipients', {
+        method: 'POST',
+        body: JSON.stringify(data)
+      }),
+
+    update: (id: string, data: Partial<EmailRecipientInput>) =>
+      request<EmailRecipient>(`/email/recipients/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data)
+      }),
+
+    toggle: (id: string) =>
+      request<EmailRecipient>(`/email/recipients/${id}/toggle`, { method: 'PATCH' }),
+
+    remove: (id: string) =>
+      request<void>(`/email/recipients/${id}`, { method: 'DELETE' }),
+  },
+
+  sendTest: () =>
+    request<EmailTestResult>('/email/test', { method: 'POST' }),
+};

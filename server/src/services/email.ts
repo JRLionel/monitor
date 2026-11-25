@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { prisma } from '../db.js';
 
 interface Hotspot {
   id: string;
@@ -12,34 +13,66 @@ interface Hotspot {
   createdAt: Date;
 }
 
+// transporter 缓存：以账户 id + updatedAt 为键，配置变更后自动重建
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-let transporter: any = null;
+let cachedTransporter: any = null;
+let cachedKey = '';
 
-function getTransporter(): any {
-  if (!process.env.SMTP_HOST || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn('Email configuration incomplete, notifications disabled');
+/**
+ * 从数据库读取当前激活的发件账户，创建 nodemailer transporter。
+ * 无激活账户时返回 null（邮件通知未配置）。
+ */
+async function getTransporter(): Promise<{ transporter: any; account: { username: string } } | null> {
+  const account = await prisma.emailAccount.findFirst({
+    where: { isActive: true }
+  });
+
+  if (!account) {
+    console.warn('No active email account configured, notifications disabled');
     return null;
   }
 
-  if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: process.env.SMTP_SECURE === 'true',
+  const cacheKey = `${account.id}:${account.updatedAt.toISOString()}`;
+
+  if (!cachedTransporter || cachedKey !== cacheKey) {
+    cachedTransporter = nodemailer.createTransport({
+      host: account.host,
+      port: account.port,
+      secure: account.secure,
       auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS
+        user: account.username,
+        pass: account.password
       }
     });
+    cachedKey = cacheKey;
   }
 
-  return transporter;
+  return { transporter: cachedTransporter, account };
+}
+
+/**
+ * 获取所有启用的收件邮箱地址。
+ */
+async function getEnabledRecipients(): Promise<string[]> {
+  const recipients = await prisma.emailRecipient.findMany({
+    where: { isEnabled: true },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  return recipients.map(r => r.address);
 }
 
 export async function sendHotspotEmail(hotspot: Hotspot & { keyword?: { text: string } | null }): Promise<boolean> {
-  const mailer = getTransporter();
-  
-  if (!mailer || !process.env.NOTIFY_EMAIL) {
+  const mailer = await getTransporter();
+
+  if (!mailer) {
+    return false;
+  }
+
+  const to = await getEnabledRecipients();
+
+  if (to.length === 0) {
+    console.warn('No enabled email recipients, notifications disabled');
     return false;
   }
 
@@ -53,9 +86,9 @@ export async function sendHotspotEmail(hotspot: Hotspot & { keyword?: { text: st
   const emoji = importanceEmoji[hotspot.importance] || '📌';
 
   try {
-    await mailer.sendMail({
-      from: process.env.SMTP_USER,
-      to: process.env.NOTIFY_EMAIL,
+    await mailer.transporter.sendMail({
+      from: mailer.account.username,
+      to: to.join(', '),
       subject: `${emoji} 热点监控: ${hotspot.title.slice(0, 50)}`,
       html: `
         <!DOCTYPE html>
@@ -84,18 +117,18 @@ export async function sendHotspotEmail(hotspot: Hotspot & { keyword?: { text: st
             </div>
             <div class="content">
               <h2 style="margin-top: 0;">${hotspot.title}</h2>
-              
+
               <p><span class="badge badge-${hotspot.importance}">${hotspot.importance.toUpperCase()}</span></p>
-              
+
               ${hotspot.summary ? `<p><strong>摘要：</strong>${hotspot.summary}</p>` : ''}
-              
+
               <div class="meta">
                 <p><strong>来源：</strong>${hotspot.source}</p>
                 <p><strong>相关性评分：</strong>${hotspot.relevance}/100</p>
                 ${hotspot.keyword ? `<p><strong>关键词：</strong>${hotspot.keyword.text}</p>` : ''}
                 <p><strong>发现时间：</strong>${new Date(hotspot.createdAt).toLocaleString('zh-CN')}</p>
               </div>
-              
+
               <a href="${hotspot.url}" class="button">查看原文 →</a>
             </div>
           </div>
@@ -113,9 +146,16 @@ export async function sendHotspotEmail(hotspot: Hotspot & { keyword?: { text: st
 }
 
 export async function sendDigestEmail(hotspots: Hotspot[]): Promise<boolean> {
-  const mailer = getTransporter();
-  
-  if (!mailer || !process.env.NOTIFY_EMAIL || hotspots.length === 0) {
+  const mailer = await getTransporter();
+
+  if (!mailer || hotspots.length === 0) {
+    return false;
+  }
+
+  const to = await getEnabledRecipients();
+
+  if (to.length === 0) {
+    console.warn('No enabled email recipients, notifications disabled');
     return false;
   }
 
@@ -130,9 +170,9 @@ export async function sendDigestEmail(hotspots: Hotspot[]): Promise<boolean> {
       </tr>
     `).join('');
 
-    await mailer.sendMail({
-      from: process.env.SMTP_USER,
-      to: process.env.NOTIFY_EMAIL,
+    await mailer.transporter.sendMail({
+      from: mailer.account.username,
+      to: to.join(', '),
       subject: `📊 热点监控日报 - ${hotspots.length} 条新热点`,
       html: `
         <!DOCTYPE html>
@@ -162,5 +202,43 @@ export async function sendDigestEmail(hotspots: Hotspot[]): Promise<boolean> {
   } catch (error) {
     console.error('Failed to send digest email:', error);
     return false;
+  }
+}
+
+export async function sendTestEmail(): Promise<{ ok: boolean; sent?: number; error?: string }> {
+  const mailer = await getTransporter();
+
+  if (!mailer) {
+    return { ok: false, error: '尚未配置激活的发件账户' };
+  }
+
+  const to = await getEnabledRecipients();
+
+  if (to.length === 0) {
+    return { ok: false, error: '没有启用的收件邮箱' };
+  }
+
+  try {
+    await mailer.transporter.sendMail({
+      from: mailer.account.username,
+      to: to.join(', '),
+      subject: '📮 热点监控测试邮件',
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; color: #333;">
+          <h2>📮 这是一封测试邮件</h2>
+          <p>收到此邮件说明邮箱通知配置正确。</p>
+          <p style="color: #999; font-size: 12px;">发送时间：${new Date().toLocaleString('zh-CN')}</p>
+        </body>
+        </html>
+      `
+    });
+
+    return { ok: true, sent: to.length };
+  } catch (error: any) {
+    console.error('Failed to send test email:', error);
+    return { ok: false, error: error?.message || '发送失败' };
   }
 }

@@ -33,7 +33,7 @@
 | 前端 | React + Vite + TailwindCSS | 响应式、赛博朋克风格 UI |
 | 后端 | Node.js + Express | 轻量级 API 服务 |
 | 数据库 | SQLite + Prisma | 轻量存储、ORM |
-| AI 服务 | OpenRouter API | 热点验证、内容分析 |
+| AI 服务 | 多厂商 Provider（OpenAI 兼容） | 热点验证、内容分析，可切换 DeepSeek / 小米 MiMo / OpenCode Go |
 | 定时任务 | node-cron | 定时热点抓取 |
 | 实时通信 | Socket.io | 浏览器推送 |
 | 邮件 | Nodemailer | 邮件通知 |
@@ -83,8 +83,10 @@ yupi-hot-monitor/
 ## ⚙️ 配置说明
 
 ```env
-# OpenRouter AI
-OPENROUTER_API_KEY=your_openrouter_key
+# 模型服务（三选一，也可以启动后在页面「模型服务」中配置）
+DEEPSEEK_API_KEY=
+MIMO_API_KEY=
+OPENCODE_API_KEY=
 
 # Twitter API (twitterapi.io)
 TWITTER_API_KEY=your_twitter_api_key
@@ -124,7 +126,7 @@ cd client && npm run dev
 - [ ] 项目初始化
 - [ ] 后端 API 开发
 - [ ] 数据源对接
-- [ ] AI 集成 (OpenRouter)
+- [ ] AI 集成 (多厂商 Provider)
 - [ ] 前端页面开发
 - [ ] 通知系统开发
 - [ ] 测试与验收

@@ -68,3 +68,27 @@ model Setting {
   key   String @unique
   value String
 }
+
+// 发件 SMTP 账户
+model EmailAccount {
+  id        String   @id @default(uuid())
+  name      String            // 备注名，如 "QQ邮箱-工作"
+  host      String            // SMTP 服务器地址
+  port      Int      @default(587)
+  secure    Boolean  @default(false)
+  username  String            // SMTP 用户名（登录账号）
+  password  String            // 密码/授权码
+  isActive  Boolean  @default(false)  // 当前使用，全局仅一个（路由层保证）
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// 收件邮箱
+model EmailRecipient {
+  id        String   @id @default(uuid())
+  name      String?           // 备注名（可选）
+  address   String   @unique  // 收件邮箱
+  isEnabled Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

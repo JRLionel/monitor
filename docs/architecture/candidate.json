@@ -168,7 +168,7 @@
       "id": "ai",
       "type": "backend",
       "label": "AI 分析",
-      "sublabel": "OpenRouter SDK",
+      "sublabel": "LLM Provider 层",
       "pos": [
         810,
         30
@@ -181,19 +181,19 @@
         {
           "path": "server/src/services/ai.ts",
           "line": 1,
-          "end_line": 6,
-          "label": "OpenRouter 客户端"
+          "end_line": 2,
+          "label": "经 Provider 层调用"
         },
         {
-          "path": "server/src/services/ai.ts",
-          "line": 33,
-          "end_line": 34,
-          "label": "deepseek-v3.2"
+          "path": "server/src/services/llm/catalog.ts",
+          "line": 7,
+          "end_line": 88,
+          "label": "三家厂商目录"
         },
         {
           "path": "server/src/services/ai.ts",
           "line": 151,
-          "end_line": 165,
+          "end_line": 163,
           "label": "无 Key 降级"
         }
       ]
@@ -285,8 +285,8 @@
     {
       "id": "llm",
       "type": "external",
-      "label": "OpenRouter",
-      "sublabel": "deepseek-v3.2",
+      "label": "模型服务商",
+      "sublabel": "DeepSeek · MiMo · OpenCode Go",
       "pos": [
         1370,
         30
@@ -297,16 +297,16 @@
       ],
       "sources": [
         {
-          "path": "server/src/services/ai.ts",
-          "line": 33,
-          "end_line": 34,
-          "label": "模型调用"
+          "path": "server/src/services/llm/openaiCompatible.ts",
+          "line": 21,
+          "end_line": 88,
+          "label": "OpenAI 兼容适配器"
         },
         {
-          "path": "server/src/services/ai.ts",
-          "line": 168,
-          "end_line": 171,
-          "label": "分析调用"
+          "path": "server/src/services/llm/registry.ts",
+          "line": 94,
+          "end_line": 105,
+          "label": "getChatProvider"
         }
       ]
     },
@@ -520,9 +520,9 @@
       "title": "AI 分析与准入",
       "items": [
         "Query Expansion 生成关键词变体并缓存，先做文本预匹配",
-        "OpenRouter（deepseek-v3.2）逐条输出真实性、相关性、重要性与摘要",
+        "当前启用厂商（默认 DeepSeek deepseek-flash，页面可切换小米 MiMo / OpenCode Go）逐条输出真实性、相关性、重要性与摘要",
         "准入：丢弃 isReal=false、relevance<50、未提及关键词且 relevance<65",
-        "无 OPENROUTER_API_KEY 时降级为固定分（预匹配 50 / 未匹配 20），且不会触发邮件"
+        "未配置任何厂商密钥时降级为固定分（预匹配 50 / 未匹配 20），且不会触发邮件"
       ]
     },
     {

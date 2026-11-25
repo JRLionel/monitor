@@ -3,6 +3,23 @@ import { prisma } from '../db.js';
 
 const router = Router();
 
+// 含密钥的配置项不返回明文，避免在前端泄露
+const SENSITIVE_KEY = /api[_-]?key|secret|password|token/i;
+
+function maskValue(value: string): string {
+  if (value.length <= 8) return '****';
+  return `${value.slice(0, 4)}****${value.slice(-4)}`;
+}
+
+function maskSensitive(settings: Record<string, string>): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(settings).map(([key, value]) => [
+      key,
+      SENSITIVE_KEY.test(key) && value ? maskValue(value) : value,
+    ])
+  );
+}
+
 // 获取所有设置
 router.get('/', async (req, res) => {
   try {
@@ -12,7 +29,7 @@ router.get('/', async (req, res) => {
       return acc;
     }, {} as Record<string, string>);
 
-    res.json(settingsMap);
+    res.json(maskSensitive(settingsMap));
   } catch (error) {
     console.error('Error fetching settings:', error);
     res.status(500).json({ error: 'Failed to fetch settings' });
@@ -56,7 +73,10 @@ router.get('/:key', async (req, res) => {
       return res.status(404).json({ error: 'Setting not found' });
     }
 
-    res.json({ key: setting.key, value: setting.value });
+    res.json({
+      key: setting.key,
+      value: SENSITIVE_KEY.test(setting.key) ? maskValue(setting.value) : setting.value
+    });
   } catch (error) {
     console.error('Error fetching setting:', error);
     res.status(500).json({ error: 'Failed to fetch setting' });

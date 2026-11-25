@@ -2,7 +2,7 @@
 
 > 输入关键词，让 AI 从全网 8+ 信息源自动抓取、甄别、分析热点，并通过 WebSocket 实时推送到浏览器、通过邮件提醒重要情报。
 
-一个前后端分离的 AI 实战项目：后端基于 Express 5 + Prisma，前端基于 React 19 + Vite，借助 OpenRouter 接入大模型完成真假识别与相关性分析，并把整套监控能力封装为可复用的 Agent Skills 技能包。
+一个前后端分离的 AI 实战项目：后端基于 Express 5 + Prisma，前端基于 React 19 + Vite，可自由切换 DeepSeek / 小米 MiMo / OpenCode Go 接入大模型完成真假识别与相关性分析，并把整套监控能力封装为可复用的 Agent Skills 技能包。
 
 > 项目原作：[程序员鱼皮 · AI 热点监控工具](https://www.codefather.cn/)，本 README 聚焦功能模块与系统架构的工程说明。
 
@@ -161,7 +161,7 @@
 | 前端 | React 19 + Vite 7 + TypeScript 5.9 | SPA，Vite 代理 REST 与 WebSocket |
 | UI | Tailwind CSS 4 + Framer Motion + Lucide | 深色科技风，Aceternity 风格背景组件 |
 | 后端 | Express 5 + TypeScript（tsx） | REST API + Socket.io 服务 |
-| AI | OpenRouter SDK（DeepSeek V3.2） | 查询扩展、内容分析；未配置时有降级逻辑 |
+| AI | 多厂商 Provider（OpenAI 兼容 HTTP） | 查询扩展、内容分析；支持 DeepSeek / 小米 MiMo / OpenCode Go，可切换、可检测连接，未配置时降级 |
 | 采集 | axios + cheerio + twitterapi.io | 搜索引擎页面解析 + 平台公开 API |
 | 定时任务 | node-cron | 每 30 分钟巡检 |
 | 数据库 | SQLite + Prisma 6 | 4 张表，轻量本地存储 |
@@ -218,7 +218,7 @@ monitor/
 │   │   │   ├── twitter.ts               # Twitter / X
 │   │   │   ├── search.ts                # Bing / Google / DuckDuckGo / HackerNews
 │   │   │   ├── chinaSearch.ts           # 搜狗 / B站 / 微博
-│   │   │   ├── ai.ts                    # OpenRouter：查询扩展 + 内容分析
+│   │   │   ├── ai.ts                    # 查询扩展 + 内容分析（经 Provider 层调用）
 │   │   │   └── email.ts                 # SMTP 邮件
 │   │   ├── jobs/hotspotChecker.ts       # 巡检编排：唯一串联“采集→过滤→AI→入库→通知”的文件
 │   │   ├── utils/sortHotspots.ts        # 重要性 / 热度综合分的内存排序
@@ -272,7 +272,7 @@ sequenceDiagram
   participant DB as Prisma · SQLite
   participant COL as 采集服务<br/>twitter / search / chinaSearch
   participant EXT as 外部站点<br/>twitterapi.io · Bing · HN · 搜狗 · B站 · 微博
-  participant AI as ai.ts · OpenRouter
+  participant AI as ai.ts · LLM Provider
   participant IO as Socket.io
   participant UI as client/socket.ts
   participant MAIL as email.ts · SMTP
@@ -359,7 +359,7 @@ sequenceDiagram
 | [server/src/services/twitter.ts](server/src/services/twitter.ts) | twitterapi.io 高级搜索；`TWITTER_FILTER_CONFIG` 控制点赞 / 转发 / 浏览 / 粉丝阈值 | **改 Twitter 采集范围、质量过滤阈值、翻页数** |
 | [server/src/services/search.ts](server/src/services/search.ts) | 国际源采集：Bing / Google / DuckDuckGo 页面解析 + HackerNews Algolia API；`deduplicateResults`、`searchAll` | **改国际源解析规则；Google / DuckDuckGo 已实现但未接入默认巡检** |
 | [server/src/services/chinaSearch.ts](server/src/services/chinaSearch.ts) | 国内源采集：搜狗、B站视频 / 用户 / UP 主投稿、微博热搜；`detectAndFetchAccount` 做账号检测 | **改国内源解析规则、B站账号检测逻辑** |
-| [server/src/services/ai.ts](server/src/services/ai.ts) | OpenRouter `deepseek/deepseek-v3.2`：`expandKeyword` 查询扩展（进程内缓存）、`preMatchKeyword` 预匹配、`analyzeContent` 内容分析、`batchAnalyze` | **改模型名、提示词、判定字段、无 Key 降级策略** |
+| [server/src/services/ai.ts](server/src/services/ai.ts) | 查询扩展 `expandKeyword`（进程内缓存）、`preMatchKeyword` 预匹配、`analyzeContent` 内容分析、`batchAnalyze`；模型调用统一走 `services/llm/` Provider 层 | **改提示词、判定字段、无 Key 降级策略；换模型只改厂商配置** |
 | [server/src/services/email.ts](server/src/services/email.ts) | Nodemailer SMTP：`sendHotspotEmail` 单条 HTML 邮件；`sendDigestEmail` 日报（已实现但未被调用） | **改邮件模板、收件人、SMTP 配置；启用日报时在巡检里调用 digest** |
 | [server/src/utils/sortHotspots.ts](server/src/utils/sortHotspots.ts) | `importance` 与 `hot` 两种内存排序及热度加权公式 | 调整热度权重、重要性顺序 |
 | [server/src/test-sources.ts](server/src/test-sources.ts) | 本地逐个验证采集源 | 新增源后加一条测试 |
@@ -424,7 +424,7 @@ sequenceDiagram
 ### 前置条件
 
 - Node.js ≥ 18（推荐 20 LTS）
-- 一个 [OpenRouter API Key](https://openrouter.ai/settings/keys)（必需，用于 AI 分析）
+- 任选一家模型服务的 API Key：[DeepSeek](https://platform.deepseek.com/api_keys) / [小米 MiMo](https://platform.xiaomimimo.com/#/console/api-keys) / [OpenCode Go](https://opencode.ai/console)（不配置时 AI 分析走降级逻辑）
 
 ### 1. 安装依赖
 
@@ -442,13 +442,16 @@ cd ../client && npm install
 cp server/.env.example server/.env
 ```
 
-编辑 `server/.env`，至少填入 OpenRouter Key：
+编辑 `server/.env`，可选填入任意一家模型服务的 Key（也可启动后在页面「模型服务」中配置）：
 
 ```env
 DATABASE_URL="file:./dev.db"
 PORT=3001
 CLIENT_URL=http://localhost:5173
-OPENROUTER_API_KEY=sk-or-v1-你的key
+# 三选一，也可以留空后在页面里配置
+DEEPSEEK_API_KEY=
+MIMO_API_KEY=
+OPENCODE_API_KEY=
 # 可选：Twitter 采集
 TWITTER_API_KEY=你的key
 # 可选：邮件通知（high/urgent）
