@@ -2,9 +2,8 @@ import { Server } from 'socket.io';
 import { prisma } from '../db.js';
 import { searchTwitter } from '../services/twitter.js';
 import { searchHackerNews } from '../services/search.js';
-import { searchBilibili, detectAndFetchAccount } from '../services/chinaSearch.js';
 import { searchJuejin } from '../services/juejin.js';
-import { searchWeibo } from '../services/weibo.js';
+import { searchGitHub, searchCSDN } from '../services/techSearch.js';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
 import { sendHotspotEmail } from '../services/email.js';
 import { clusterByEvent, dedupeItems, linkCrossSources } from '../services/dedupe.js';
@@ -20,9 +19,9 @@ const SEARCH_CACHE_TTL_MS = Number(process.env.SEARCH_CACHE_TTL_MS || 20 * 60 * 
 const SOURCE_TIMEOUTS: Record<string, number> = {
   twitter: 30_000,
   hackernews: 20_000,
-  bilibili: 20_000,
   juejin: 20_000,
-  weibo: 25_000,
+  github: 25_000,
+  csdn: 25_000,
 };
 
 function filterByFreshness(results: SearchResult[]): SearchResult[] {
@@ -62,17 +61,7 @@ export async function runHotspotCheck(io: Server): Promise<void> {
     console.log(`\n📎 Checking keyword: "${keyword.text}"`);
 
     try {
-      // 第一步：检测关键词是否为某个平台账号
-      console.log(`  🎯 Detecting account for "${keyword.text}"...`);
-      const accountResult = await detectAndFetchAccount(keyword.text);
-      
-      if (accountResult.accounts.length > 0) {
-        for (const acc of accountResult.accounts) {
-          console.log(`  ✅ Found ${acc.platform} account: ${acc.name} (${acc.followers} followers)`);
-        }
-      }
-
-      // 第 1.5 步：Query Expansion（查询扩展）
+      // 第一步：Query Expansion（查询扩展）
       console.log(`  🔍 Expanding keyword "${keyword.text}"...`);
       const expandedKeywords = await expandKeyword(keyword.text);
       console.log(`  📋 Expanded to ${expandedKeywords.length} variants: ${expandedKeywords.slice(0, 5).join(', ')}${expandedKeywords.length > 5 ? '...' : ''}`);
@@ -80,13 +69,13 @@ export async function runHotspotCheck(io: Server): Promise<void> {
       const queryType = detectQueryType(keyword.text);
       console.log(`  🧠 Query type: ${queryType}`);
 
-      // 第二步：从多个来源获取数据（国际 + 国内并行请求）
+      // 第二步：从多个技术来源并行获取数据（社区讨论 + 开源项目 + 中文技术博客）
       const sourceDefs = [
         { id: 'twitter', fn: () => searchTwitter(keyword.text) },
         { id: 'hackernews', fn: () => searchHackerNews(keyword.text) },
-        { id: 'bilibili', fn: () => searchBilibili(keyword.text) },
         { id: 'juejin', fn: () => searchJuejin(keyword.text) },
-        { id: 'weibo', fn: () => searchWeibo(keyword.text) },
+        { id: 'github', fn: () => searchGitHub(keyword.text) },
+        { id: 'csdn', fn: () => searchCSDN(keyword.text) },
       ] as const;
 
       const outcomes = await Promise.all(
@@ -101,12 +90,6 @@ export async function runHotspotCheck(io: Server): Promise<void> {
       );
 
       const allResults: SearchResult[] = [];
-      
-      // 优先添加账号检测到的最新内容
-      if (accountResult.results.length > 0) {
-        allResults.push(...accountResult.results);
-        console.log(`  AccountFetch: ${accountResult.results.length} results`);
-      }
 
       for (const outcome of outcomes) {
         const { status } = outcome;
@@ -138,12 +121,12 @@ export async function runHotspotCheck(io: Server): Promise<void> {
 
       console.log(`  Total: ${allResults.length} raw → ${uniqueResults.length} unique → ${freshResults.length} fresh (within ${MAX_AGE_HOURS}h)`);
 
-      // 处理结果：Twitter 优先多给配额
-      // Twitter 最多处理 15 条，其他来源共享 10 条配额
+      // 处理结果配额：Twitter 保留独立配额（无 Key 时为空，不影响其他源）
+      // 技术源数量较多，提高非 Twitter 来源的共享配额
       let twitterProcessed = 0;
       let otherProcessed = 0;
       const TWITTER_QUOTA = 15;
-      const OTHER_QUOTA = 10;
+      const OTHER_QUOTA = 30;
 
       for (const item of sortedResults) {
         // 检查配额（按“实际处理条数”计，避免过滤后继续无限调用 AI）

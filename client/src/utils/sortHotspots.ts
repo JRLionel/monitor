@@ -46,29 +46,19 @@ export function engagementRaw(item: SortableHotspot): number | null {
   const comments = item.commentCount ?? item.replyCount;
   const source = (item.source || '').toLowerCase();
 
-  if (source === 'weibo') {
-    if (allMissing([retweets, comments, likes])) return null;
-    return 0.4 * log1pSafe(retweets) + 0.35 * log1pSafe(comments) + 0.25 * log1pSafe(likes);
-  }
-
-  if (source === 'bilibili') {
-    if (allMissing([views, item.danmakuCount, comments, likes])) return null;
-    return (
-      0.3 * log1pSafe(views) +
-      0.25 * log1pSafe(item.danmakuCount) +
-      0.2 * log1pSafe(comments) +
-      0.15 * log1pSafe(likes)
-    );
-  }
-
-  if (source === 'juejin') {
-    if (allMissing([views, likes, comments])) return null;
-    return 0.5 * log1pSafe(views) + 0.3 * log1pSafe(likes) + 0.2 * log1pSafe(comments);
+  if (source === 'github') {
+    if (allMissing([likes, views, comments])) return null;
+    return 0.6 * log1pSafe(likes) + 0.25 * log1pSafe(views) + 0.15 * log1pSafe(comments);
   }
 
   if (source === 'hackernews') {
     if (allMissing([item.score, comments, views])) return null;
-    return 0.45 * log1pSafe(item.score) + 0.35 * log1pSafe(comments) + 0.1 * log1pSafe(views ? views / 1000 : 0);
+    return 0.5 * log1pSafe(item.score) + 0.4 * log1pSafe(comments) + 0.1 * log1pSafe(views ? views / 1000 : 0);
+  }
+
+  if (source === 'juejin' || source === 'csdn') {
+    if (allMissing([views, likes, comments])) return null;
+    return 0.5 * log1pSafe(views) + 0.3 * log1pSafe(likes) + 0.2 * log1pSafe(comments);
   }
 
   if (source === 'twitter') {

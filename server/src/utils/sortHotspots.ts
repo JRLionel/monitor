@@ -56,40 +56,33 @@ export function engagementRaw(item: SortableHotspot): number | null {
   const comments = item.commentCount ?? item.replyCount;
   const source = (item.source || '').toLowerCase();
 
-  if (source === 'weibo') {
-    if (allMissing([retweets, comments, likes])) return null;
+  if (source === 'github') {
+    // star(likes) 为主，fork(views) 与 issue(comments) 为辅
+    if (allMissing([likes, views, comments])) return null;
     return (
-      0.4 * log1pSafe(retweets) +
-      0.35 * log1pSafe(comments) +
-      0.25 * log1pSafe(likes)
+      0.6 * log1pSafe(likes) +
+      0.25 * log1pSafe(views) +
+      0.15 * log1pSafe(comments)
     );
   }
 
-  if (source === 'bilibili') {
-    if (allMissing([views, item.danmakuCount, comments, likes])) return null;
+  if (source === 'hackernews') {
+    // 社区投票(score) 与评论数为主
+    if (allMissing([item.score, comments, views])) return null;
     return (
-      0.3 * log1pSafe(views) +
-      0.25 * log1pSafe(item.danmakuCount) +
-      0.2 * log1pSafe(comments) +
-      0.15 * log1pSafe(likes)
+      0.5 * log1pSafe(item.score) +
+      0.4 * log1pSafe(comments) +
+      0.1 * log1pSafe(views ? views / 1000 : 0)
     );
   }
 
-  if (source === 'juejin') {
+  if (source === 'juejin' || source === 'csdn') {
+    // 中文技术社区：阅读量为主，点赞与评论为辅
     if (allMissing([views, likes, comments])) return null;
     return (
       0.5 * log1pSafe(views) +
       0.3 * log1pSafe(likes) +
       0.2 * log1pSafe(comments)
-    );
-  }
-
-  if (source === 'hackernews') {
-    if (allMissing([item.score, comments, views])) return null;
-    return (
-      0.45 * log1pSafe(item.score) +
-      0.35 * log1pSafe(comments) +
-      0.1 * log1pSafe(views ? views / 1000 : 0)
     );
   }
 

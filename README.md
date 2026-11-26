@@ -26,7 +26,7 @@
 作为内容创作者或技术人，需要第一时间掌握领域动态（如大模型更新）。手动刷遍各平台既慢又容易漏。本项目把这件事交给 AI：
 
 1. 你配置一批**监控关键词**；
-2. 系统定时从 **Twitter、Bing、HackerNews、搜狗、Bilibili、微博** 等信息源并行抓取内容；
+2. 系统定时从 **Hacker News、掘金、GitHub、CSDN、Twitter** 等技术信息源并行抓取内容；
 3. AI 自动完成**查询扩展 → 真假识别 → 相关性打分 → 重要性分级 → 摘要生成**；
 4. 过滤掉低质、无关内容后入库，并通过 **实时推送 + 邮件 + 站内通知** 三通道告知你；
 5. 同一套能力还能以 **Agent Skills** 形式被 Cursor / Claude Code 等 AI 工具直接调用。
@@ -41,12 +41,12 @@
 | 添加 / 删除监控关键词 | 关键词唯一，重复添加返回冲突提示 |
 | 激活 / 暂停单个关键词 | 一键切换状态，仅激活词参与定时巡检 |
 | ⭐ AI 自动扩展查询变体 | Query Expansion：生成别名、缩写、中英对照等 5–15 个变体并缓存，用于文本预匹配 |
-| B 站账号智能检测 | 关键词命中 UP 主时，直接抓取该账号最新投稿 |
+| 技术源关键词检索 | 社区 / 开源 / 论文 / 文章多源并行，按关键词意图动态调整优先级 |
 
 ### 🔍 2. 热点采集与分析
 | 能力 | 说明 |
 |------|------|
-| ⭐ 8+ 数据源并行采集 | `Promise.allSettled` 并发抓取，单源失败不影响整体；内置频率限制与随机 UA |
+| ⭐ 7 数据源并行采集 | `Promise.allSettled` 并发抓取，单源失败不影响整体；内置频率限制与随机 UA |
 | ⭐ AI 真实性验证 | 过滤标题党、假新闻、营销软文（`isReal`） |
 | ⭐ AI 相关性评分（0–100） | 结合关键词变体预匹配严格打分，低于 50 分过滤 |
 | AI 重要性分级 | `low / medium / high / urgent` 四档 |
@@ -137,16 +137,14 @@
 ```
 读取激活关键词
       │
-      ├─① B 站账号检测 ──→ 命中则抓取该 UP 主最新投稿
+      ├─① Query Expansion ──→ AI 扩展关键词变体（带缓存）
       │
-      ├─② Query Expansion ──→ AI 扩展关键词变体（带缓存）
-      │
-      ├─③ 多源并行采集 ──→ Twitter / Bing / HackerNews / 搜狗 / B站 / 微博
+      ├─② 多源并行采集 ──→ Hacker News / 掘金 / GitHub / CSDN / Twitter
       │                     （每源独立超时，失败不影响其他源，结果带状态码）
       │
-      ├─④ 数据清洗 ──→ URL 去重 → 语义近重复合并 → 7 天新鲜度过滤 → 查询意图排序
+      ├─③ 数据清洗 ──→ URL 去重 → 语义近重复合并 → 7 天新鲜度过滤 → 查询意图排序
       │
-      ├─⑤ 配额分配 ──→ Twitter 最多 15 条，其他源共 10 条
+      ├─④ 配额分配 ──→ Twitter 最多 15 条，其他源共 30 条
       │
       ├─⑥ AI 分析 ──→ 真假识别 + 相关性评分/理由 + 重要性 + 摘要
       │
@@ -187,19 +185,20 @@ Setting  独立键值表              （系统配置）
 
 ### 3.5 数据源
 
+### 巡检采集源（技术热点）
+
 | 来源 | 接入方式 | 备注 |
 |------|----------|------|
-| Twitter / X | twitterapi.io（需 Key） | Top 2 页 + Latest 1 页，本地质量过滤 |
-| Bing / Google / DuckDuckGo | 页面抓取 + cheerio | 随机 UA + 频率限制 |
-| HackerNews | Algolia 官方 API | 近 24h story |
-| 搜狗 | 页面抓取 + cheerio | 替代百度，反爬较宽松 |
-| Bilibili | 公开 Web API | 视频搜索、用户搜索、账号投稿 |
-| 微博 | 移动端关键词搜索 + 热搜兜底 | 可选 `WEIBO_COOKIE`；搜索被登录墙拦截时自动降级热搜 |
+| Hacker News | Algolia 官方 API | 近 24h story，无需 Key |
+| 稀土掘金 | 公开搜索 API | 按最新排序的技术文章，无需 Key |
+| GitHub | 官方搜索 API | 按关键词检索仓库，star 作为热度，无需 Key |
+| CSDN | 公开搜索接口 | 最近 7 天技术博客文章，按发布时间倒序，无需 Key |
+| Twitter / X | twitterapi.io（需 Key） | **占位**：未配置 `TWITTER_API_KEY` 时自动跳过，Top 2 页 + Latest 1 页，本地质量过滤 |
 | 微博 / 百度 / 抖音 / 头条 / B站 / 知乎热榜 | 公开热榜接口或页内嵌 JSON | 仅供全网热榜页使用，按榜单排名展示 |
 | IT之家 / 虎嗅 / 少数派 / 爱范儿 / Solidot | RSS / Atom | 按发布时间倒序解析，归入「科技资讯」 |
 | Hacker News 首页 | Algolia `front_page` API | 归入「全球视野」 |
 
-> 默认巡检并行调用 Twitter / Bing / HackerNews / 搜狗 / Bilibili / 微博 六个源；Google、DuckDuckGo 的采集实现已内置于 `services/search.ts`。所有源共用统一 HTTP 层（重试、退避、412/429 识别、按域名限流），每次运行后可通过 `GET /api/sources/status` 查看各源状态。全网热榜是独立的聚合视图，通过 `GET /api/hot-board` 获取，默认缓存 5 分钟，不写入数据库。
+> 默认巡检并行调用 Hacker News / 掘金 / GitHub / CSDN 四个无需 Key 的源，另加 Twitter 占位（未配置 Key 时返回空）。所有源共用统一 HTTP 层（重试、退避、412/429 识别、按域名限流），每次运行后可通过 `GET /api/sources/status` 查看各源状态。全网热榜是独立的聚合视图，通过 `GET /api/hot-board` 获取，默认缓存 5 分钟，不写入数据库。
 
 ---
 
@@ -222,10 +221,11 @@ monitor/
 │   │   │   └── settings.ts
 │   │   ├── services/                    # 外部 IO 层：采集 / AI / 邮件
 │   │   │   ├── http.ts                  # 统一请求层：重试/退避/Retry-After/412/429/限流
-│   │   │   ├── twitter.ts               # Twitter / X
-│   │   │   ├── search.ts                # Bing / Google / DuckDuckGo / HackerNews
-│   │   │   ├── chinaSearch.ts           # 搜狗 / B站
-│   │   │   ├── weibo.ts                 # 微博关键词搜索 + 热搜兜底
+│   │   │   ├── twitter.ts               # Twitter / X（需 Key，占位）
+│   │   │   ├── search.ts                # HackerNews（Algolia API）
+│   │   │   ├── juejin.ts                # 稀土掘金搜索 API
+│   │   │   ├── techSearch.ts            # GitHub / CSDN
+│   │   │   ├── hotBoard.ts              # 全网热榜（独立聚合视图）
 │   │   │   ├── cache.ts                 # 按关键词/源的 TTL 缓存
 │   │   │   ├── dedupe.ts                # URL 去重 + 语义近重复 + 跨平台事件聚类
 │   │   │   ├── queryType.ts             # 查询意图识别与来源优先级
@@ -236,7 +236,7 @@ monitor/
 │   │   ├── utils/
 │   │   │   ├── sortHotspots.ts          # 分平台互动评分 + 时间衰减 + 内存排序
 │   │   │   └── text.ts                  # 中英文分词 / 相关性 / 相似度
-│   │   ├── test-sources.ts              # 本地脚本：逐个测试 6 个采集源是否可用
+│   │   ├── test-sources.ts              # 本地脚本：逐个测试 5 个采集源是否可用
 │   │   └── __tests__/                   # Vitest 单测
 │   ├── prisma/
 │   │   ├── schema.prisma                # 数据模型（Keyword / Hotspot / Notification / Setting）
@@ -284,8 +284,8 @@ sequenceDiagram
   participant IDX as index.ts
   participant HC as hotspotChecker.ts
   participant DB as Prisma · SQLite
-  participant COL as 采集服务<br/>twitter / search / chinaSearch
-  participant EXT as 外部站点<br/>twitterapi.io · Bing · HN · 搜狗 · B站 · 微博
+  participant COL as 采集服务<br/>search / juejin / techSearch / twitter
+  participant EXT as 外部站点<br/>HN · 掘金 · GitHub · CSDN · twitterapi.io
   participant AI as ai.ts · LLM Provider
   participant IO as Socket.io
   participant UI as client/socket.ts
@@ -297,26 +297,21 @@ sequenceDiagram
   DB-->>HC: Keyword[]
 
   loop 每个激活关键词（串行）
-    HC->>COL: detectAndFetchAccount(keyword)
-    COL->>EXT: 查询 B站用户 / 最新投稿
-    EXT-->>COL: 账号与投稿
-    COL-->>HC: accountResult（账号 + 内容）
-
     HC->>AI: expandKeyword(keyword)
     AI-->>HC: expandedKeywords[]（进程内缓存）
 
-    par 国际源并发
-      HC->>COL: searchTwitter / searchBing / searchHackerNews
-    and 国内源并发
-      HC->>COL: searchSogou / searchBilibili / searchWeibo
+    par 技术源并发（5 源）
+      HC->>COL: searchHackerNews / searchJuejin / searchGitHub
+    and
+      HC->>COL: searchCSDN / searchTwitter
     end
     COL->>EXT: HTTP / API 请求（内置限速）
-    EXT-->>COL: HTML / JSON
+    EXT-->>COL: JSON / Atom XML
     COL-->>HC: Promise.allSettled 结果（失败源忽略）
 
-    Note over HC: 合并账号结果与 6 源结果<br/>去重（标准化 URL）→ 7 天新鲜度 → 来源优先级
+    Note over HC: 合并 5 源结果<br/>去重（标准化 URL）→ 7 天新鲜度 → 查询意图优先级
 
-    loop 每条候选结果（Twitter 最多 15 / 其他合计 10）
+    loop 每条候选结果（Twitter 最多 15 / 其他合计 30）
       HC->>DB: findFirst({ url, source })
       DB-->>HC: 是否已存在
 
@@ -353,7 +348,7 @@ sequenceDiagram
 **时序要点**（按 [hotspotChecker.ts](server/src/jobs/hotspotChecker.ts#L40-L248) 实际执行顺序）：
 
 - **串行**：关键词逐个处理；单条候选也是逐条 `await` AI 分析；每个关键词结束固定 `sleep 2s` 限速。
-- **并行**：6 个采集调用同时发起（`Promise.allSettled`），任一源失败不影响其他源。
+- **并行**：5 个采集调用同时发起（`Promise.allSettled`），任一源失败不影响其他源。
 - **短路**：已存在的 `url + source` 直接跳过，不调用 AI；`isReal=false`、`relevance<50`、或“未提及关键词且 `<65`”都会在写库前丢弃。
 - **返回出口**：每个采集函数返回 `SearchResult[]` 给巡检器；`ai.ts` 返回 `AIAnalysis` 给巡检器；`email.ts` 返回 `boolean`。巡检器是唯一决定“入库 / 丢弃 / 推送”的角色。
 - **推送**：入库成功后先发 `hotspot:new` 到 `keyword:<词>` 房间，再广播 `notification`，均经 `index.ts` 由 Socket.io 送达前端。
@@ -365,14 +360,15 @@ sequenceDiagram
 | [server/src/index.ts](server/src/index.ts) | 进程入口。挂载 7 组 REST 路由（关键词/热点/通知/设置/邮件/采集源状态/全网热榜）、`/api/health`、`POST /api/check-hotspots`；处理 Socket.io 连接与房间订阅；注册 node-cron | 改服务端口、定时频率（`*/30 * * * *`）、WebSocket 事件名、手动触发接口 |
 | [server/src/db.ts](server/src/db.ts) | 导出全局 `prisma` 实例 | 一般无需改动 |
 | [server/src/types.ts](server/src/types.ts) | `SearchResult`、`AIAnalysis`、`TwitterFilterConfig` 等共享类型 | **新增数据源时先在这里补字段**；调整 AI 返回结构 |
-| [server/src/jobs/hotspotChecker.ts](server/src/jobs/hotspotChecker.ts) | **巡检主编排**：账号检测 → 查询扩展 → 6 源并发 → 去重 → 新鲜度 → 优先级 → 配额 → AI → 阈值过滤 → 入库 → 推送 / 邮件 | **调整默认采集源、配额、7 天新鲜度、来源优先级、过滤阈值、邮件触发条件** |
+| [server/src/jobs/hotspotChecker.ts](server/src/jobs/hotspotChecker.ts) | **巡检主编排**：查询扩展 → 5 源并发 → 去重 → 新鲜度 → 优先级 → 配额 → AI → 阈值过滤 → 入库 → 推送 / 邮件 | **调整默认采集源、配额、7 天新鲜度、来源优先级、过滤阈值、邮件触发条件** |
 | [server/src/routes/keywords.ts](server/src/routes/keywords.ts) | 关键词 CRUD 与激活 / 暂停 | 关键词新增字段（如来源配置、分类） |
-| [server/src/routes/hotspots.ts](server/src/routes/hotspots.ts) | 热点列表（分页 / 筛选 / 排序）、统计、详情、删除；`POST /search` 手动全网搜索（仅 Twitter+Bing，分析前 10 条，不入库） | 增删筛选参数、改分页、扩展手动搜索源、改搜索分析条数 |
+| [server/src/routes/hotspots.ts](server/src/routes/hotspots.ts) | 热点列表（分页 / 筛选 / 排序）、统计、详情、删除；`POST /search` 手动搜索（并行调用 5 个技术源，URL 去重后按发布时间倒序，分析前 20 条，不入库） | 增删筛选参数、改分页、扩展手动搜索源、改搜索分析条数 |
 | [server/src/routes/notifications.ts](server/src/routes/notifications.ts) | 站内通知列表、未读数、已读、删除 / 清空 | 通知类型与状态逻辑 |
 | [server/src/routes/settings.ts](server/src/routes/settings.ts) | `Setting` 键值表 CRUD（当前前端未使用，巡检也不读取） | 要做“前端可配置”时从这里接入并让巡检读取 |
 | [server/src/services/twitter.ts](server/src/services/twitter.ts) | twitterapi.io 高级搜索；`TWITTER_FILTER_CONFIG` 控制点赞 / 转发 / 浏览 / 粉丝阈值 | **改 Twitter 采集范围、质量过滤阈值、翻页数** |
-| [server/src/services/search.ts](server/src/services/search.ts) | 国际源采集：Bing / Google / DuckDuckGo 页面解析 + HackerNews Algolia API；`deduplicateResults`、`searchAll` | **改国际源解析规则；Google / DuckDuckGo 已实现但未接入默认巡检** |
-| [server/src/services/chinaSearch.ts](server/src/services/chinaSearch.ts) | 国内源采集：搜狗、B站视频 / 用户 / UP 主投稿、微博热搜；`detectAndFetchAccount` 做账号检测 | **改国内源解析规则、B站账号检测逻辑** |
+| [server/src/services/search.ts](server/src/services/search.ts) | Hacker News 采集：Algolia API 检索近 24h story | **改 HN 检索参数** |
+| [server/src/services/juejin.ts](server/src/services/juejin.ts) | 稀土掘金搜索 API（按最新排序） | 改掘金检索参数 |
+| [server/src/services/techSearch.ts](server/src/services/techSearch.ts) | 技术源采集：GitHub（star 热度）、CSDN（最近 7 天技术博客，阅读/点赞/评论热度） | **改技术源检索参数、关键词过滤、热度信号** |
 | [server/src/services/ai.ts](server/src/services/ai.ts) | 查询扩展 `expandKeyword`（进程内缓存）、`preMatchKeyword` 预匹配、`analyzeContent` 内容分析、`batchAnalyze`；模型调用统一走 `services/llm/` Provider 层 | **改提示词、判定字段、无 Key 降级策略；换模型只改厂商配置** |
 | [server/src/services/email.ts](server/src/services/email.ts) | Nodemailer SMTP：`sendHotspotEmail` 单条 HTML 邮件；`sendDigestEmail` 日报（已实现但未被调用） | **改邮件模板、收件人、SMTP 配置；启用日报时在巡检里调用 digest** |
 | [server/src/utils/sortHotspots.ts](server/src/utils/sortHotspots.ts) | `importance` 与 `hot` 两种内存排序及热度加权公式 | 调整热度权重、重要性顺序 |
@@ -418,8 +414,8 @@ sequenceDiagram
 
 | 我想…… | 去哪里改 |
 |---------|----------|
-| 新增 / 移除一个采集源 | 先在 `services/` 实现采集函数，再改 [hotspotChecker.ts](server/src/jobs/hotspotChecker.ts#L76-L117) 的 `Promise.allSettled` 数组与 `sources` 映射，最后补 `prioritizeResults` 优先级和 `types.ts` 的 `source` 枚举 |
-| 改 Bing / 搜狗 / B站 / 微博的解析规则 | [search.ts](server/src/services/search.ts) / [chinaSearch.ts](server/src/services/chinaSearch.ts) |
+| 新增 / 移除一个采集源 | 先在 `services/` 实现采集函数，再改 [hotspotChecker.ts](server/src/jobs/hotspotChecker.ts) 的 `sourceDefs` 数组与 `SOURCE_TIMEOUTS`，最后补 `sourceStatus.ts` 标签、`queryType.ts` 优先级、`types.ts` 的 `source` 枚举，以及前端 `FilterSortBar` / `SourcesModal` / `App.tsx` |
+| 改 GitHub / CSDN 的解析规则 | [techSearch.ts](server/src/services/techSearch.ts) |
 | 改 Twitter 抓取与质量门槛 | [twitter.ts](server/src/services/twitter.ts) 中的 `TWITTER_FILTER_CONFIG` 与 `searchTwitter` |
 | 改 AI 真假判定 / 相关性规则 | [ai.ts](server/src/services/ai.ts) 的 `buildAnalysisPrompt`；阈值在 [hotspotChecker.ts](server/src/jobs/hotspotChecker.ts#L155-L171) |
 | 换 AI 模型 | [ai.ts](server/src/services/ai.ts) 中两处 `model: 'deepseek/deepseek-v3.2'` |

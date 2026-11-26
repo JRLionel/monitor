@@ -203,36 +203,58 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 手动搜索热点
+// 手动搜索热点（与定时巡检共用同一套技术源）
 router.post('/search', async (req, res) => {
   try {
-    const { query, sources = ['twitter'] } = req.body;
+    const { query, sources } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
     }
 
-    // 导入搜索服务
     const { searchTwitter } = await import('../services/twitter.js');
+    const { searchHackerNews } = await import('../services/search.js');
+    const { searchJuejin } = await import('../services/juejin.js');
+    const { searchGitHub, searchCSDN } = await import('../services/techSearch.js');
     const { analyzeContent } = await import('../services/ai.js');
 
-    const results: any[] = [];
+    const allSources = [
+      { id: 'hackernews', fn: () => searchHackerNews(query) },
+      { id: 'juejin', fn: () => searchJuejin(query) },
+      { id: 'github', fn: () => searchGitHub(query) },
+      { id: 'csdn', fn: () => searchCSDN(query) },
+      // Twitter 占位：未配置 API Key 时服务内部返回空，不影响其他源
+      { id: 'twitter', fn: () => searchTwitter(query) },
+    ];
+    const selected = Array.isArray(sources) && sources.length > 0
+      ? allSources.filter(def => sources.includes(def.id))
+      : allSources;
 
-    // Twitter 搜索
-    if (sources.includes('twitter')) {
-      try {
-        const tweets = await searchTwitter(query);
-        results.push(...tweets);
-      } catch (error) {
-        console.error('Twitter search failed:', error);
+    const outcomes = await Promise.allSettled(selected.map(def => def.fn()));
+    const results: any[] = [];
+    for (const outcome of outcomes) {
+      if (outcome.status === 'fulfilled' && Array.isArray(outcome.value)) {
+        results.push(...outcome.value);
       }
     }
 
-    // AI 分析前几个结果
+    // URL 去重，按发布时间倒序
+    const seen = new Set<string>();
+    const unique = results.filter(item => {
+      const key = item.url || item.title;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    unique.sort((a, b) =>
+      new Date(b.publishedAt ?? 0).getTime() - new Date(a.publishedAt ?? 0).getTime()
+    );
+
+    // AI 分析前 20 条
     const analyzedResults = await Promise.all(
-      results.slice(0, 10).map(async (item) => {
+      unique.slice(0, 20).map(async (item) => {
         try {
-          const analysis = await analyzeContent(item.title + ' ' + item.content, query);
+          const analysis = await analyzeContent(item.title + ' ' + (item.content ?? ''), query);
           return { ...item, analysis };
         } catch {
           return { ...item, analysis: null };

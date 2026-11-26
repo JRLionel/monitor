@@ -1,12 +1,12 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Activity,
   Database,
   ExternalLink,
-  Eye,
   FileText,
+  Github,
   Globe,
+  Newspaper,
   Twitter,
   X,
   Zap,
@@ -37,24 +37,6 @@ const DATA_SOURCES: {
     requiresKey: true,
   },
   {
-    key: 'weibo',
-    name: '微博',
-    category: '社交平台',
-    description: '移动端关键词搜索优先，未登录时自动降级热搜匹配与相关话题兜底。',
-    method: '接入方式：移动端搜索（可选 Cookie）+ 热搜 API',
-    url: 'https://s.weibo.com/top/summary',
-    accent: 'bg-orange-500/10 border-orange-500/20 text-orange-600',
-  },
-  {
-    key: 'bilibili',
-    name: 'Bilibili',
-    category: '视频平台',
-    description: '调用公开 Web API 搜索视频，并自动识别同名 UP 主、抓取其最新投稿。',
-    method: '接入方式：公开 Web API',
-    url: 'https://www.bilibili.com',
-    accent: 'bg-pink-500/10 border-pink-500/20 text-pink-700',
-  },
-  {
     key: 'juejin',
     name: '稀土掘金',
     category: '技术社区',
@@ -71,6 +53,24 @@ const DATA_SOURCES: {
     method: '接入方式：官方 API',
     url: 'https://news.ycombinator.com',
     accent: 'bg-amber-500/10 border-amber-500/20 text-amber-700',
+  },
+  {
+    key: 'github',
+    name: 'GitHub',
+    category: '开源项目',
+    description: '按关键词检索开源仓库，以 star 数作为热度信号，捕捉新晋热门项目。',
+    method: '接入方式：官方搜索 API（无需 Key）',
+    url: 'https://github.com/trending',
+    accent: 'bg-slate-700/10 border-slate-700/20 text-slate-800',
+  },
+  {
+    key: 'csdn',
+    name: 'CSDN',
+    category: '中文技术博客',
+    description: '按关键词检索最近 7 天的技术博客文章，带入阅读、点赞与评论数据。',
+    method: '接入方式：公开搜索接口（无需 Key）',
+    url: 'https://www.csdn.net/',
+    accent: 'bg-red-500/10 border-red-500/20 text-red-700',
   },
 ];
 
@@ -92,10 +92,10 @@ function getStatusBadge(status?: SourceStatusEntry) {
 function getSourceIcon(source: string) {
   switch (source) {
     case 'twitter': return <Twitter className="h-4 w-4" />;
-    case 'bilibili': return <Eye className="h-4 w-4" />;
-    case 'weibo': return <Activity className="h-4 w-4" />;
     case 'juejin': return <FileText className="h-4 w-4" />;
     case 'hackernews': return <Zap className="h-4 w-4" />;
+    case 'github': return <Github className="h-4 w-4" />;
+    case 'csdn': return <Newspaper className="h-4 w-4" />;
     default: return <Globe className="h-4 w-4" />;
   }
 }

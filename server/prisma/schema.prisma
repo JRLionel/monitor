@@ -25,7 +25,7 @@ model Hotspot {
   title           String
   content         String
   url             String
-  source          String    // twitter, hackernews, bilibili, juejin, weibo
+  source          String    // hackernews, juejin, github, csdn, twitter
   sourceId        String?   // 原始推文ID等
   isReal          Boolean   @default(true)
   relevance       Int       @default(0)
@@ -39,7 +39,7 @@ model Hotspot {
   replyCount      Int?      // 回复数
   commentCount    Int?      // 评论数
   quoteCount      Int?      // 引用/转引数
-  danmakuCount    Int?      // 弹幕数 (Bilibili)
+  danmakuCount    Int?      // 弹幕数（历史字段，B站源已移除）
   authorName      String?   // 作者名称
   authorUsername  String?   // 作者用户名
   authorAvatar    String?   // 作者头像

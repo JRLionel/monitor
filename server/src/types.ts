@@ -2,7 +2,12 @@ export interface SearchResult {
   title: string;
   content: string;
   url: string;
-  source: 'twitter' | 'hackernews' | 'bilibili' | 'juejin' | 'weibo';
+  source:
+    | 'twitter'
+    | 'hackernews'
+    | 'juejin'
+    | 'github'
+    | 'csdn';
   sourceId?: string;
   publishedAt?: Date;
   viewCount?: number;

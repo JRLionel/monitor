@@ -144,6 +144,77 @@ ${matchHint}
 只输出 JSON，不要有其他内容。`;
 }
 
+function clampRelevance(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 0;
+}
+
+function normalizeImportance(value: unknown): AIAnalysis['importance'] {
+  return ['low', 'medium', 'high', 'urgent'].includes(String(value))
+    ? String(value) as AIAnalysis['importance']
+    : 'low';
+}
+
+/**
+ * 解析模型返回的分析结果。
+ * 兼容 markdown 代码块，以及被 max_tokens 截断（缺少闭合大括号）的 JSON。
+ * 无法解析时返回 null，由调用方走 fallback。
+ */
+function parseAnalysisResponse(raw: string): AIAnalysis | null {
+  const text = raw.trim();
+  if (!text) return null;
+
+  // 去掉 ```json ``` 包裹
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const source = fenced ? fenced[1] : text;
+
+  const start = source.indexOf('{');
+  if (start === -1) return null;
+  const end = source.lastIndexOf('}');
+
+  // 情况一：完整 JSON
+  if (end > start) {
+    try {
+      const parsed = JSON.parse(source.slice(start, end + 1));
+      return {
+        isReal: Boolean(parsed.isReal),
+        relevance: clampRelevance(parsed.relevance),
+        relevanceReason: String(parsed.relevanceReason ?? '').slice(0, 200),
+        keywordMentioned: Boolean(parsed.keywordMentioned),
+        importance: normalizeImportance(parsed.importance),
+        summary: String(parsed.summary ?? '').slice(0, 150)
+      };
+    } catch {
+      // 继续尝试截断兜底
+    }
+  }
+
+  // 情况二：输出被截断，按字段兜底提取
+  const relevanceMatch = source.match(/"relevance"\s*:\s*(-?\d+(?:\.\d+)?)/);
+  if (!relevanceMatch) return null;
+
+  const readString = (field: string): string => {
+    const match = source.match(new RegExp(`"${field}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"?`));
+    return match
+      ? match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n').replace(/\\\\/g, '\\')
+      : '';
+  };
+  const readBool = (field: string, fallback: boolean): boolean => {
+    const match = source.match(new RegExp(`"${field}"\\s*:\\s*(true|false)`));
+    return match ? match[1] === 'true' : fallback;
+  };
+  const importanceMatch = source.match(/"importance"\s*:\s*"?(low|medium|high|urgent)"?/);
+
+  return {
+    isReal: readBool('isReal', true),
+    relevance: clampRelevance(relevanceMatch[1]),
+    relevanceReason: readString('relevanceReason').slice(0, 200),
+    keywordMentioned: readBool('keywordMentioned', false),
+    importance: normalizeImportance(importanceMatch?.[1]),
+    summary: readString('summary').slice(0, 150)
+  };
+}
+
 export async function analyzeContent(content: string, keyword: string, preMatchResult?: { matched: boolean; matchedTerms: string[] }): Promise<AIAnalysis> {
   // 默认预匹配结果
   const matchResult = preMatchResult ?? { matched: false, matchedTerms: [] };
@@ -178,38 +249,29 @@ export async function analyzeContent(content: string, keyword: string, preMatchR
         }
       ],
       temperature: 0.2, // 降低温度，提高判断一致性
-      maxTokens: 500
+      // 推理模型的 reasoning_tokens 与正文共用该预算，500 容易被截断导致 JSON 不完整
+      maxTokens: 1200
     });
-    
-    // 尝试解析 JSON
-    const jsonMatch = responseContent.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      const parsed = JSON.parse(jsonMatch[0]);
-      return {
-        isReal: Boolean(parsed.isReal),
-        relevance: Math.min(100, Math.max(0, Number(parsed.relevance) || 0)),
-        relevanceReason: String(parsed.relevanceReason || '').slice(0, 200),
-        keywordMentioned: Boolean(parsed.keywordMentioned),
-        importance: ['low', 'medium', 'high', 'urgent'].includes(parsed.importance) 
-          ? parsed.importance 
-          : 'low',
-        summary: String(parsed.summary || '').slice(0, 150)
-      };
+
+    const analysis = parseAnalysisResponse(responseContent);
+    if (analysis) {
+      return analysis;
     }
 
-    throw new Error('Failed to parse AI response');
+    console.warn(`AI 响应无法解析，使用 fallback。响应片段：${responseContent.slice(0, 200)}`);
   } catch (error) {
-    console.error('AI analysis failed:', error);
-    // Fallback
-    return {
-      isReal: true,
-      relevance: matchResult.matched ? 30 : 10,
-      relevanceReason: 'AI 分析失败，使用默认分数',
-      keywordMentioned: matchResult.matched,
-      importance: 'low',
-      summary: content.slice(0, 50) + '...'
-    };
+    console.error('AI analysis failed:', error instanceof Error ? error.message : error);
   }
+
+  // Fallback
+  return {
+    isReal: true,
+    relevance: matchResult.matched ? 30 : 10,
+    relevanceReason: 'AI 分析失败，使用默认分数',
+    keywordMentioned: matchResult.matched,
+    importance: 'low',
+    summary: content.slice(0, 50) + '...'
+  };
 }
 
 export async function batchAnalyze(contents: string[], keyword: string, expandedKeywords?: string[]): Promise<AIAnalysis[]> {

@@ -7,7 +7,7 @@ import {
   ChevronLeft, ChevronRight,
   MessageCircle, Repeat2, Quote, User, Shield, ShieldAlert,
   ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText,
-  Settings as SettingsIcon, Database, Mail, Rss
+  Settings as SettingsIcon, Database, Mail, Rss, Github, Newspaper
 } from 'lucide-react';
 import { 
   keywordsApi, hotspotsApi, notificationsApi, sourcesApi, triggerHotspotCheck,
@@ -491,10 +491,10 @@ function App() {
   const getSourceIcon = (source: string) => {
     switch (source) {
       case 'twitter': return <Twitter className="w-4 h-4" />;
-      case 'bilibili': return <Eye className="w-4 h-4" />;
-      case 'weibo': return <Activity className="w-4 h-4" />;
       case 'juejin': return <FileText className="w-4 h-4" />;
       case 'hackernews': return <Zap className="w-4 h-4" />;
+      case 'github': return <Github className="w-4 h-4" />;
+      case 'csdn': return <Newspaper className="w-4 h-4" />;
       default: return <Globe className="w-4 h-4" />;
     }
   };
@@ -502,10 +502,10 @@ function App() {
   const getSourceLabel = (source: string) => {
     const labels: Record<string, string> = {
       twitter: 'Twitter',
-      bilibili: 'Bilibili',
-      weibo: '微博热搜',
+      hackernews: 'Hacker News',
       juejin: '稀土掘金',
-      hackernews: 'HackerNews'
+      github: 'GitHub',
+      csdn: 'CSDN'
     };
     return labels[source] || source;
   };

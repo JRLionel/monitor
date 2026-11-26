@@ -12,7 +12,7 @@ import { cacheClear } from '../services/cache.js';
 const analyzed: string[] = [];
 
 let twitterItems: any[] = [];
-let weiboItems: any[] = [];
+let githubItems: any[] = [];
 
 function makeItems(source: string, count: number) {
   return Array.from({ length: count }, (_, i) => ({
@@ -45,13 +45,9 @@ vi.mock('../services/search.js', () => ({
   searchHackerNews: async () => []
 }));
 
-vi.mock('../services/chinaSearch.js', () => ({
-  searchBilibili: async () => [],
-  detectAndFetchAccount: async () => ({ accounts: [], results: [] })
-}));
-
-vi.mock('../services/weibo.js', () => ({
-  searchWeibo: async () => weiboItems
+vi.mock('../services/techSearch.js', () => ({
+  searchGitHub: async () => githubItems,
+  searchCSDN: async () => []
 }));
 
 vi.mock('../services/juejin.js', () => ({
@@ -85,7 +81,7 @@ describe('巡检配额（回归）', () => {
   beforeEach(() => {
     analyzed.length = 0;
     twitterItems = [];
-    weiboItems = [];
+    githubItems = [];
     cacheClear();
   });
 
@@ -95,9 +91,9 @@ describe('巡检配额（回归）', () => {
     expect(analyzed).toHaveLength(15);
   }, 20000);
 
-  it('其他来源共享 10 条配额', async () => {
-    weiboItems = makeItems('weibo', 30);
+  it('非 Twitter 来源共享 30 条配额', async () => {
+    githubItems = makeItems('github', 40);
     await runHotspotCheck(fakeServer);
-    expect(analyzed).toHaveLength(10);
+    expect(analyzed).toHaveLength(30);
   }, 20000);
 });

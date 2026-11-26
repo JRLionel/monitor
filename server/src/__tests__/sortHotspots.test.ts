@@ -29,16 +29,16 @@ describe('calcHotScore', () => {
     expect(calcHotScore(item)).toBeLessThan(25);
   });
 
-  it('微博转发权重高于点赞', () => {
-    const reposts = makeHotspot({ source: 'weibo', likeCount: 0, retweetCount: 100, publishedAt: recent() });
-    const likes = makeHotspot({ source: 'weibo', likeCount: 100, retweetCount: 0, publishedAt: recent() });
-    expect(calcHotScore(reposts)).toBeGreaterThan(calcHotScore(likes));
+  it('GitHub 高 star 项目热度高于低 star 项目', () => {
+    const manyStars = makeHotspot({ source: 'github', likeCount: 5000, publishedAt: recent() });
+    const fewStars = makeHotspot({ source: 'github', likeCount: 100, publishedAt: recent() });
+    expect(calcHotScore(manyStars)).toBeGreaterThan(calcHotScore(fewStars));
   });
 
-  it('跨平台可比：B站高播放能超过 Twitter 低点赞', () => {
-    const bilibili = makeHotspot({ source: 'bilibili', likeCount: 0, retweetCount: 0, viewCount: 100_000, publishedAt: recent() });
+  it('跨平台可比：GitHub 高 star 能超过 Twitter 低点赞', () => {
+    const github = makeHotspot({ source: 'github', likeCount: 10_000, viewCount: 2000, publishedAt: recent() });
     const twitter = makeHotspot({ source: 'twitter', likeCount: 100, retweetCount: 0, viewCount: 0, publishedAt: recent() });
-    expect(calcHotScore(bilibili)).toBeGreaterThan(calcHotScore(twitter));
+    expect(calcHotScore(github)).toBeGreaterThan(calcHotScore(twitter));
   });
 
   it('浏览量为 null 时安全处理', () => {

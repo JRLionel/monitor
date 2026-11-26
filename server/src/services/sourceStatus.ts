@@ -18,9 +18,9 @@ export interface SourceStatusEntry {
 export const SOURCE_LABELS: Record<string, string> = {
   twitter: 'Twitter',
   hackernews: 'Hacker News',
-  bilibili: 'B站',
   juejin: '掘金',
-  weibo: '微博',
+  github: 'GitHub',
+  csdn: 'CSDN',
 };
 
 export class SourceTimeoutError extends Error {
