@@ -330,16 +330,18 @@ sequenceDiagram
           DB-->>HC: Notification
           HC->>IO: emit hotspot:new（keyword 房间）+ notification
           IO-->>UI: 实时推送，前端刷新列表
-
-          opt importance 为 high / urgent
-            HC->>MAIL: sendHotspotEmail(hotspot)
-            MAIL-->>HC: boolean
-          end
         end
       end
     end
 
     HC->>HC: 等待 2 秒（关键词间限速）
+  end
+
+  opt 本轮有新增热点
+    HC->>AI: summarizeScanDigest(本轮新增条目)
+    AI-->>HC: ScanDigest（AI 总结或模板兜底）
+    HC->>MAIL: sendScanDigestEmail(digest, items)
+    MAIL-->>HC: boolean
   end
 
   HC-->>IDX: 巡检完成（Promise 结束）
@@ -360,7 +362,7 @@ sequenceDiagram
 | [server/src/index.ts](server/src/index.ts) | 进程入口。挂载 7 组 REST 路由（关键词/热点/通知/设置/邮件/采集源状态/全网热榜）、`/api/health`、`POST /api/check-hotspots`；处理 Socket.io 连接与房间订阅；注册 node-cron | 改服务端口、定时频率（`*/30 * * * *`）、WebSocket 事件名、手动触发接口 |
 | [server/src/db.ts](server/src/db.ts) | 导出全局 `prisma` 实例 | 一般无需改动 |
 | [server/src/types.ts](server/src/types.ts) | `SearchResult`、`AIAnalysis`、`TwitterFilterConfig` 等共享类型 | **新增数据源时先在这里补字段**；调整 AI 返回结构 |
-| [server/src/jobs/hotspotChecker.ts](server/src/jobs/hotspotChecker.ts) | **巡检主编排**：查询扩展 → 5 源并发 → 去重 → 新鲜度 → 优先级 → 配额 → AI → 阈值过滤 → 入库 → 推送 / 邮件 | **调整默认采集源、配额、7 天新鲜度、来源优先级、过滤阈值、邮件触发条件** |
+| [server/src/jobs/hotspotChecker.ts](server/src/jobs/hotspotChecker.ts) | **巡检主编排**：查询扩展 → 5 源并发 → 去重 → 新鲜度 → 优先级 → 配额 → AI → 阈值过滤 → 入库 → 推送 / 本轮汇总邮件 | **调整默认采集源、配额、7 天新鲜度、来源优先级、过滤阈值、邮件汇总策略** |
 | [server/src/routes/keywords.ts](server/src/routes/keywords.ts) | 关键词 CRUD 与激活 / 暂停 | 关键词新增字段（如来源配置、分类） |
 | [server/src/routes/hotspots.ts](server/src/routes/hotspots.ts) | 热点列表（分页 / 筛选 / 排序）、统计、详情、删除；`POST /search` 手动搜索（并行调用 5 个技术源，URL 去重后按发布时间倒序，分析前 20 条，不入库） | 增删筛选参数、改分页、扩展手动搜索源、改搜索分析条数 |
 | [server/src/routes/notifications.ts](server/src/routes/notifications.ts) | 站内通知列表、未读数、已读、删除 / 清空 | 通知类型与状态逻辑 |
@@ -369,8 +371,8 @@ sequenceDiagram
 | [server/src/services/search.ts](server/src/services/search.ts) | Hacker News 采集：Algolia API 检索近 24h story | **改 HN 检索参数** |
 | [server/src/services/juejin.ts](server/src/services/juejin.ts) | 稀土掘金搜索 API（按最新排序） | 改掘金检索参数 |
 | [server/src/services/techSearch.ts](server/src/services/techSearch.ts) | 技术源采集：GitHub（star 热度）、CSDN（最近 7 天技术博客，阅读/点赞/评论热度） | **改技术源检索参数、关键词过滤、热度信号** |
-| [server/src/services/ai.ts](server/src/services/ai.ts) | 查询扩展 `expandKeyword`（进程内缓存）、`preMatchKeyword` 预匹配、`analyzeContent` 内容分析、`batchAnalyze`；模型调用统一走 `services/llm/` Provider 层 | **改提示词、判定字段、无 Key 降级策略；换模型只改厂商配置** |
-| [server/src/services/email.ts](server/src/services/email.ts) | Nodemailer SMTP：`sendHotspotEmail` 单条 HTML 邮件；`sendDigestEmail` 日报（已实现但未被调用） | **改邮件模板、收件人、SMTP 配置；启用日报时在巡检里调用 digest** |
+| [server/src/services/ai.ts](server/src/services/ai.ts) | 查询扩展 `expandKeyword`（进程内缓存）、`preMatchKeyword` 预匹配、`analyzeContent` 内容分析、`summarizeScanDigest` 本轮简报汇总、`batchAnalyze`；模型调用统一走 `services/llm/` Provider 层 | **改提示词、判定字段、无 Key 降级策略；换模型只改厂商配置** |
+| [server/src/services/email.ts](server/src/services/email.ts) | Nodemailer SMTP：`sendScanDigestEmail` 每轮扫描发送一封 AI 汇总简报；`sendTestEmail` 测试邮件 | **改简报模板、收件人、SMTP 配置** |
 | [server/src/utils/sortHotspots.ts](server/src/utils/sortHotspots.ts) | `importance` 与 `hot` 两种内存排序及热度加权公式 | 调整热度权重、重要性顺序 |
 | [server/src/services/hotBoard.ts](server/src/services/hotBoard.ts) | 全网热榜：微博 / 百度 / 抖音 / 头条 / B站 / 知乎 / HN 适配器、RSS/Atom 解析、跨平台同频热点聚类、5 分钟快照缓存 | **改热榜解析规则、RSS 源列表、聚类阈值** |
 | [server/src/routes/hotBoard.ts](server/src/routes/hotBoard.ts) | `GET /api/hot-board`（`refresh=1` 强制刷新，`sources` / `limit` 可选） | 调整接口参数与快照策略 |

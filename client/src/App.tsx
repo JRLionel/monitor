@@ -897,43 +897,47 @@ function App() {
               ) : (
                 <div className="space-y-3">
                   {/* 批量操作栏 */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-2xl border border-[#dfe6ec] bg-white/70 backdrop-blur">
-                    <label className="flex items-center gap-2 text-xs text-[#5c6f82] cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={hotspots.length > 0 && selectedHotspotIds.size === hotspots.length}
-                        onChange={toggleSelectAllHotspots}
-                        className="w-4 h-4 rounded border-[#cfdae3] bg-[#f6f8fa] accent-[#1d4ed8] cursor-pointer"
-                      />
-                      全选当前页
-                      {selectedHotspotIds.size > 0 && (
-                        <span className="text-[#1d4ed8]">已选 {selectedHotspotIds.size} 条</span>
-                      )}
-                    </label>
-                    <button
-                      onClick={handleBatchDeleteHotspots}
-                      disabled={selectedHotspotIds.size === 0 || isBatchDeleting}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      {isBatchDeleting
-                        ? '删除中...'
-                        : `批量删除${selectedHotspotIds.size ? `（${selectedHotspotIds.size}）` : ''}`}
-                    </button>
-                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5 rounded-2xl border border-[#dfe6ec] bg-white/70 backdrop-blur">
+                    <div className="flex items-center gap-2.5">
+                      <label className="flex items-center gap-2 text-xs text-[#5c6f82] cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={hotspots.length > 0 && selectedHotspotIds.size === hotspots.length}
+                          onChange={toggleSelectAllHotspots}
+                          className="w-4 h-4 rounded border-[#cfdae3] bg-[#f6f8fa] accent-[#1d4ed8] cursor-pointer"
+                        />
+                        全选当前页
+                      </label>
+                      <span className="h-3 w-px bg-[#dfe6ec]" />
+                      <span className={cn('text-[11px]', selectedHotspotIds.size > 0 ? 'text-[#1d4ed8] font-medium' : 'text-[#9aa9b7]')}>
+                        {selectedHotspotIds.size > 0
+                          ? `已选 ${selectedHotspotIds.size} 条`
+                          : `共 ${hotspots.length} 条`}
+                      </span>
+                    </div>
 
-                  {/* 一键展开/折叠所有理由 */}
-                  {hotspots.some(h => h.relevanceReason) && (
-                    <div className="flex justify-end">
+                    <div className="flex items-center gap-2">
+                      {hotspots.some(h => h.relevanceReason) && (
+                        <button
+                          onClick={() => toggleAllReasons(hotspots)}
+                          className="flex items-center gap-1.5 text-xs text-[#6f8194] hover:text-[#1d4ed8] transition-colors px-2.5 py-2 rounded-lg hover:bg-[#eef2f6]"
+                        >
+                          <ChevronsUpDown className="w-3.5 h-3.5" />
+                          {allReasonsExpanded ? '折叠所有理由' : '展开所有理由'}
+                        </button>
+                      )}
                       <button
-                        onClick={() => toggleAllReasons(hotspots)}
-                        className="flex items-center gap-1.5 text-xs text-[#6f8194] hover:text-[#1d4ed8] transition-colors px-3 py-1.5 rounded-lg hover:bg-[#eef2f6]"
+                        onClick={handleBatchDeleteHotspots}
+                        disabled={selectedHotspotIds.size === 0 || isBatchDeleting}
+                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-medium bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
                       >
-                        <ChevronsUpDown className="w-3.5 h-3.5" />
-                        {allReasonsExpanded ? '折叠所有理由' : '展开所有理由'}
+                        <Trash2 className="w-3.5 h-3.5" />
+                        {isBatchDeleting
+                          ? '删除中...'
+                          : `批量删除${selectedHotspotIds.size ? `（${selectedHotspotIds.size}）` : ''}`}
                       </button>
                     </div>
-                  )}
+                  </div>
 
                   {hotspots.map((hotspot, index) => {
                     const heatScore = hotScoreToDisplay(calcHotScore(hotspot));

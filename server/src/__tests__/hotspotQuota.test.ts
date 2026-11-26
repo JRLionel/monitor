@@ -68,10 +68,17 @@ vi.mock('../services/ai.js', () => ({
       importance: 'low',
       summary: ''
     };
-  }
+  },
+  summarizeScanDigest: async () => ({
+    subject: 'test',
+    overview: '',
+    topics: [],
+    watchlist: '',
+    generatedBy: 'fallback'
+  })
 }));
 
-vi.mock('../services/email.js', () => ({ sendHotspotEmail: async () => true }));
+vi.mock('../services/email.js', () => ({ sendScanDigestEmail: async () => true }));
 
 const { runHotspotCheck } = await import('../jobs/hotspotChecker.js');
 

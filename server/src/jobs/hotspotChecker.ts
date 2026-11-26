@@ -4,8 +4,8 @@ import { searchTwitter } from '../services/twitter.js';
 import { searchHackerNews } from '../services/search.js';
 import { searchJuejin } from '../services/juejin.js';
 import { searchGitHub, searchCSDN } from '../services/techSearch.js';
-import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
-import { sendHotspotEmail } from '../services/email.js';
+import { analyzeContent, expandKeyword, preMatchKeyword, summarizeScanDigest, type DigestItem } from '../services/ai.js';
+import { sendScanDigestEmail } from '../services/email.js';
 import { clusterByEvent, dedupeItems, linkCrossSources } from '../services/dedupe.js';
 import { detectQueryType, sourcePriority, type QueryType } from '../services/queryType.js';
 import { cacheKey } from '../services/cache.js';
@@ -56,6 +56,8 @@ export async function runHotspotCheck(io: Server): Promise<void> {
   console.log(`Checking ${keywords.length} keywords...`);
 
   let newHotspotsCount = 0;
+  // 本轮新增热点，扫描结束后统一汇总成一封邮件
+  const digestItems: DigestItem[] = [];
 
   for (const keyword of keywords) {
     console.log(`\n📎 Checking keyword: "${keyword.text}"`);
@@ -229,10 +231,18 @@ export async function runHotspotCheck(io: Server): Promise<void> {
             importance: hotspot.importance
           });
 
-          // 邮件通知（仅对高重要级别）
-          if (['high', 'urgent'].includes(analysis.importance)) {
-            await sendHotspotEmail(hotspot);
-          }
+          // 收集到本轮简报，扫描结束后统一发送
+          digestItems.push({
+            index: digestItems.length,
+            keyword: keyword.text,
+            source: hotspot.source,
+            importance: hotspot.importance,
+            relevance: hotspot.relevance,
+            title: hotspot.title,
+            summary: hotspot.summary,
+            url: hotspot.url,
+            publishedAt: hotspot.publishedAt
+          });
 
         } catch (error) {
           console.error(`  Error processing result:`, error);
@@ -244,6 +254,23 @@ export async function runHotspotCheck(io: Server): Promise<void> {
 
     } catch (error) {
       console.error(`Error checking keyword "${keyword.text}":`, error);
+    }
+  }
+
+  // 本轮扫描结束时统一生成 AI 简报并发送一封邮件
+  if (digestItems.length > 0) {
+    const scanTime = new Date();
+    const keywordTexts = keywords.map(k => k.text);
+    try {
+      const digest = await summarizeScanDigest(digestItems, { keywords: keywordTexts, scanTime });
+      const sent = await sendScanDigestEmail(digest, digestItems, { keywords: keywordTexts, scanTime });
+      console.log(
+        sent
+          ? `📧 本轮简报已发送：${digestItems.length} 条热点，${digest.topics.length} 个主题（${digest.generatedBy === 'ai' ? 'AI 总结' : '模板兜底'}）`
+          : '📧 本轮简报未发送：未配置发件账户/收件邮箱或发送失败'
+      );
+    } catch (error) {
+      console.error('Failed to send scan digest email:', error);
     }
   }
 
