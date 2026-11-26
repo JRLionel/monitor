@@ -104,6 +104,37 @@ export const keywordsApi = {
 };
 
 // Hotspots API
+export interface SearchResultItem {
+  title: string;
+  content: string;
+  url: string;
+  source: string;
+  sourceId?: string;
+  publishedAt?: string;
+  viewCount?: number;
+  likeCount?: number;
+  retweetCount?: number;
+  replyCount?: number;
+  commentCount?: number;
+  quoteCount?: number;
+  danmakuCount?: number;
+  author?: {
+    name: string;
+    username?: string;
+    avatar?: string;
+    followers?: number;
+    verified?: boolean;
+  };
+  analysis: {
+    isReal: boolean;
+    relevance: number;
+    relevanceReason: string;
+    keywordMentioned: boolean;
+    importance: 'low' | 'medium' | 'high' | 'urgent';
+    summary: string;
+  } | null;
+}
+
 export const hotspotsApi = {
   getAll: (params?: { 
     page?: number; 
@@ -134,13 +165,19 @@ export const hotspotsApi = {
   getById: (id: string) => request<Hotspot>(`/hotspots/${id}`),
   
   search: (query: string, sources?: string[]) => 
-    request<{ results: Hotspot[] }>('/hotspots/search', {
+    request<{ results: SearchResultItem[] }>('/hotspots/search', {
       method: 'POST',
       body: JSON.stringify({ query, sources })
     }),
   
   delete: (id: string) => 
-    request<void>(`/hotspots/${id}`, { method: 'DELETE' })
+    request<void>(`/hotspots/${id}`, { method: 'DELETE' }),
+
+  deleteMany: (ids: string[]) =>
+    request<{ deleted: number }>('/hotspots/batch-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    })
 };
 
 // Notifications API
@@ -234,6 +271,88 @@ export const aiApi = {
 // Manual trigger
 export const triggerHotspotCheck = () => 
   request<{ message: string }>('/check-hotspots', { method: 'POST' });
+
+// ========== 采集源状态 ==========
+
+export type SourceState = 'ok' | 'empty' | 'error' | 'timeout' | 'skipped';
+
+export interface SourceStatusEntry {
+  source: string;
+  label: string;
+  state: SourceState;
+  count: number;
+  elapsedMs: number;
+  error?: string;
+  cacheHit?: boolean;
+  keyword?: string;
+  lastRunAt: string;
+}
+
+export interface SourceStatusSnapshot {
+  lastRunAt: string | null;
+  sources: SourceStatusEntry[];
+}
+
+export const sourcesApi = {
+  getStatus: () => request<SourceStatusSnapshot>('/sources/status'),
+};
+
+// ========== 全网热榜 ==========
+
+export type HotBoardKind = 'board' | 'feed';
+export type HotBoardGroup = 'cn' | 'news' | 'global';
+
+export interface HotBoardItem {
+  rank: number;
+  title: string;
+  url: string;
+  hotValue?: number | null;
+  label?: string;
+  desc?: string;
+  pinned?: boolean;
+}
+
+export interface HotBoard {
+  label: string;
+  code: string;
+  kind: HotBoardKind;
+  group: HotBoardGroup;
+  items: HotBoardItem[];
+  error: string | null;
+}
+
+export interface HotTopicMention {
+  platform: string;
+  label: string;
+  rank: number;
+  title: string;
+  url: string;
+  hotValue?: number | null;
+}
+
+export interface HotTopic {
+  title: string;
+  url: string;
+  platformCount: number;
+  score: number;
+  mentions: HotTopicMention[];
+}
+
+export interface HotBoardSnapshot {
+  generatedAt: string;
+  boards: Record<string, HotBoard>;
+  topics: HotTopic[];
+}
+
+export const hotBoardApi = {
+  get: (params?: { refresh?: boolean; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.refresh) searchParams.append('refresh', '1');
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    const query = searchParams.toString();
+    return request<HotBoardSnapshot>(`/hot-board${query ? `?${query}` : ''}`);
+  },
+};
 
 // ========== 邮件通知配置 ==========
 

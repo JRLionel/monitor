@@ -238,6 +238,29 @@ router.post('/search', async (req, res) => {
   }
 });
 
+// 批量删除热点
+router.post('/batch-delete', async (req, res) => {
+  const rawIds = req.body?.ids;
+  if (!Array.isArray(rawIds) || rawIds.length === 0) {
+    return res.status(400).json({ error: 'ids is required' });
+  }
+
+  const ids = [...new Set(rawIds.filter((id: unknown): id is string => typeof id === 'string' && id.length > 0))];
+  if (!ids.length) {
+    return res.status(400).json({ error: 'ids is required' });
+  }
+
+  try {
+    const result = await prisma.hotspot.deleteMany({
+      where: { id: { in: ids } }
+    });
+    res.json({ deleted: result.count });
+  } catch (error) {
+    console.error('Error batch deleting hotspots:', error);
+    res.status(500).json({ error: 'Failed to delete hotspots' });
+  }
+});
+
 // 删除热点
 router.delete('/:id', async (req, res) => {
   try {

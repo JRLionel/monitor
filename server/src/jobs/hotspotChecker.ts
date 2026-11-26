@@ -1,15 +1,29 @@
 import { Server } from 'socket.io';
 import { prisma } from '../db.js';
 import { searchTwitter } from '../services/twitter.js';
-import { searchBing, searchHackerNews, deduplicateResults } from '../services/search.js';
-import { searchSogou, searchBilibili, searchWeibo, detectAndFetchAccount } from '../services/chinaSearch.js';
+import { searchBing, searchHackerNews } from '../services/search.js';
+import { searchSogou, searchBilibili, detectAndFetchAccount } from '../services/chinaSearch.js';
+import { searchWeibo } from '../services/weibo.js';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
 import { sendHotspotEmail } from '../services/email.js';
+import { clusterByEvent, dedupeItems, linkCrossSources } from '../services/dedupe.js';
+import { detectQueryType, sourcePriority, type QueryType } from '../services/queryType.js';
+import { cacheKey } from '../services/cache.js';
+import { runSource, sourceStatusRegistry } from '../services/sourceStatus.js';
 import type { SearchResult } from '../types.js';
 
 // 新鲜度过滤：丢弃超过指定小时数的内容
 // Twitter 层面已通过 since: 限制了时间范围，这里只做兜底
 const MAX_AGE_HOURS = 7 * 24; // 7天
+const SEARCH_CACHE_TTL_MS = Number(process.env.SEARCH_CACHE_TTL_MS || 20 * 60 * 1000);
+const SOURCE_TIMEOUTS: Record<string, number> = {
+  twitter: 30_000,
+  bing: 20_000,
+  hackernews: 20_000,
+  sogou: 20_000,
+  bilibili: 20_000,
+  weibo: 25_000,
+};
 
 function filterByFreshness(results: SearchResult[]): SearchResult[] {
   const cutoff = new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000);
@@ -20,20 +34,10 @@ function filterByFreshness(results: SearchResult[]): SearchResult[] {
   });
 }
 
-// 按来源优先级排序：Twitter > 微博 > B站/账号内容 > 搜索引擎
-function prioritizeResults(results: SearchResult[]): SearchResult[] {
-  const priorityMap: Record<string, number> = {
-    twitter: 1,
-    weibo: 2,
-    bilibili: 3,
-    hackernews: 4,
-    sogou: 5,
-    bing: 6,
-    google: 7,
-    duckduckgo: 8
-  };
+// 按来源优先级排序：来源基础优先级 + 查询意图动态调整
+function prioritizeResults(results: SearchResult[], queryType?: QueryType): SearchResult[] {
   return [...results].sort((a, b) => {
-    return (priorityMap[a.source] || 99) - (priorityMap[b.source] || 99);
+    return sourcePriority(a.source, queryType) - sourcePriority(b.source, queryType);
   });
 }
 
@@ -73,22 +77,29 @@ export async function runHotspotCheck(io: Server): Promise<void> {
       const expandedKeywords = await expandKeyword(keyword.text);
       console.log(`  📋 Expanded to ${expandedKeywords.length} variants: ${expandedKeywords.slice(0, 5).join(', ')}${expandedKeywords.length > 5 ? '...' : ''}`);
 
+      const queryType = detectQueryType(keyword.text);
+      console.log(`  🧠 Query type: ${queryType}`);
+
       // 第二步：从多个来源获取数据（国际 + 国内并行请求）
-      const [
-        twitterResults,
-        bingResults,
-        hackernewsResults,
-        sogouResults,
-        bilibiliResults,
-        weiboResults
-      ] = await Promise.allSettled([
-        searchTwitter(keyword.text),
-        searchBing(keyword.text),
-        searchHackerNews(keyword.text),
-        searchSogou(keyword.text),
-        searchBilibili(keyword.text),
-        searchWeibo(keyword.text)
-      ]);
+      const sourceDefs = [
+        { id: 'twitter', fn: () => searchTwitter(keyword.text) },
+        { id: 'bing', fn: () => searchBing(keyword.text) },
+        { id: 'hackernews', fn: () => searchHackerNews(keyword.text) },
+        { id: 'sogou', fn: () => searchSogou(keyword.text) },
+        { id: 'bilibili', fn: () => searchBilibili(keyword.text) },
+        { id: 'weibo', fn: () => searchWeibo(keyword.text) },
+      ] as const;
+
+      const outcomes = await Promise.all(
+        sourceDefs.map(def =>
+          runSource(def.id, def.fn, {
+            keyword: keyword.text,
+            timeoutMs: SOURCE_TIMEOUTS[def.id],
+            cacheKey: cacheKey(def.id, keyword.text),
+            cacheTtlMs: SEARCH_CACHE_TTL_MS,
+          })
+        )
+      );
 
       const allResults: SearchResult[] = [];
       
@@ -98,28 +109,34 @@ export async function runHotspotCheck(io: Server): Promise<void> {
         console.log(`  AccountFetch: ${accountResult.results.length} results`);
       }
 
-      const sources = [
-        { name: 'Twitter', result: twitterResults },
-        { name: 'Bing', result: bingResults },
-        { name: 'HackerNews', result: hackernewsResults },
-        { name: 'Sogou', result: sogouResults },
-        { name: 'Bilibili', result: bilibiliResults },
-        { name: 'Weibo', result: weiboResults }
-      ];
-
-      for (const source of sources) {
-        if (source.result.status === 'fulfilled') {
-          allResults.push(...source.result.value);
-          console.log(`  ${source.name}: ${source.result.value.length} results`);
+      for (const outcome of outcomes) {
+        const { status } = outcome;
+        if (outcome.items.length > 0) {
+          allResults.push(...outcome.items);
+          console.log(`  ${status.label}: ${outcome.items.length} results${status.cacheHit ? '（缓存）' : ''}`);
         } else {
-          console.log(`  ${source.name}: failed - ${source.result.reason}`);
+          const reason = status.error ? ` - ${status.error}` : '';
+          console.log(`  ${status.label}: ${status.state}${reason}`);
         }
       }
 
-      // 去重 → 新鲜度过滤 → 按来源优先级排序
-      const uniqueResults = deduplicateResults(allResults);
+      io.emit('source:status', sourceStatusRegistry.snapshot());
+
+      // 语义去重 → 跨源关联 → 新鲜度过滤 → 按意图调整来源优先级
+      const uniqueResults = dedupeItems(allResults, keyword.text);
+      linkCrossSources(uniqueResults, keyword.text);
       const freshResults = filterByFreshness(uniqueResults);
-      const sortedResults = prioritizeResults(freshResults);
+      const sortedResults = prioritizeResults(freshResults, queryType);
+      const clusters = clusterByEvent(sortedResults, keyword.text);
+
+      if (clusters.length > 0) {
+        const summary = clusters
+          .slice(0, 3)
+          .map(cluster => `${cluster.sources.join('/')}(${cluster.size})`)
+          .join('、');
+        console.log(`  🧩 同频热点 ${clusters.length} 组: ${summary}`);
+      }
+
       console.log(`  Total: ${allResults.length} raw → ${uniqueResults.length} unique → ${freshResults.length} fresh (within ${MAX_AGE_HOURS}h)`);
 
       // 处理结果：Twitter 优先多给配额

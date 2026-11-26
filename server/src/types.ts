@@ -13,6 +13,7 @@ export interface SearchResult {
   score?: number; // Hacker News score
   commentCount?: number; // Hacker News / Bilibili comments
   danmakuCount?: number; // Bilibili 弹幕数
+  crossRefs?: string[]; // 跨平台关联的条目标识（source:url）
   author?: {
     name: string;
     username?: string;

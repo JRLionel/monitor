@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
+import type { SourceStatusSnapshot } from './api';
 
 let socket: Socket | null = null;
+let lastConnectError: string | null = null;
 
 export function getSocket(): Socket {
   if (!socket) {
@@ -10,6 +12,7 @@ export function getSocket(): Socket {
     });
 
     socket.on('connect', () => {
+      lastConnectError = null;
       console.log('🔌 Socket connected:', socket?.id);
     });
 
@@ -18,7 +21,14 @@ export function getSocket(): Socket {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('🔌 Socket connection error:', error);
+      // 后端重启期间 Socket.io 会自动重连，同一错误只提示一次，避免刷屏
+      const message = error.message || 'unknown error';
+      if (message === lastConnectError) return;
+      lastConnectError = message;
+      console.warn(
+        `🔌 Socket 连接失败（${window.location.origin}）：${message}。` +
+          '请确认后端服务已启动（默认 http://localhost:3001），Socket.io 会自动重连。'
+      );
     });
   }
 
@@ -64,6 +74,12 @@ export function onNotification(callback: (notification: NotificationEvent) => vo
   const s = getSocket();
   s.on('notification', callback);
   return () => s.off('notification', callback);
+}
+
+export function onSourceStatus(callback: (status: SourceStatusSnapshot) => void): () => void {
+  const s = getSocket();
+  s.on('source:status', callback);
+  return () => s.off('source:status', callback);
 }
 
 export function disconnectSocket(): void {

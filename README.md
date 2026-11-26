@@ -62,6 +62,8 @@
 | 分页加载 | 服务端分页，参数回传前端 |
 | 展开 / 折叠分析详情 | AI 理由与原始内容均可单独或一键展开 |
 | 一键跳转原文 | 直达信息源 |
+| ⭐ 全网热榜聚合页 | 6 个国内热榜 + 5 个科技 RSS + Hacker News 并行抓取，5 分钟快照缓存，单源失败不影响其他来源 |
+| ⭐ 跨平台同频热点 | 标题近似 + IDF 显著词聚类，同一事件在多个平台同时上榜时合并展示 |
 
 ### 🔔 4. 通知系统
 | 能力 | 说明 |
@@ -140,9 +142,9 @@
       ├─② Query Expansion ──→ AI 扩展关键词变体（带缓存）
       │
       ├─③ 多源并行采集 ──→ Twitter / Bing / HackerNews / 搜狗 / B站 / 微博
-      │                     （Promise.allSettled，容错）
+      │                     （每源独立超时，失败不影响其他源，结果带状态码）
       │
-      ├─④ 数据清洗 ──→ URL 去重 → 7 天新鲜度过滤 → 来源优先级排序
+      ├─④ 数据清洗 ──→ URL 去重 → 语义近重复合并 → 7 天新鲜度过滤 → 查询意图排序
       │
       ├─⑤ 配额分配 ──→ Twitter 最多 15 条，其他源共 10 条
       │
@@ -162,7 +164,7 @@
 | UI | Tailwind CSS 4 + Framer Motion + Lucide | 深色科技风，Aceternity 风格背景组件 |
 | 后端 | Express 5 + TypeScript（tsx） | REST API + Socket.io 服务 |
 | AI | 多厂商 Provider（OpenAI 兼容 HTTP） | 查询扩展、内容分析；支持 DeepSeek / 小米 MiMo / OpenCode Go，可切换、可检测连接，未配置时降级 |
-| 采集 | axios + cheerio + twitterapi.io | 搜索引擎页面解析 + 平台公开 API |
+| 采集 | axios + cheerio + twitterapi.io | 统一 HTTP 层（重试/退避/风控识别/限流）+ 页面解析 + 平台公开 API |
 | 定时任务 | node-cron | 每 30 分钟巡检 |
 | 数据库 | SQLite + Prisma 6 | 4 张表，轻量本地存储 |
 | 实时通信 | Socket.io 4 | 按关键词房间推送新热点 |
@@ -190,11 +192,14 @@ Setting  独立键值表              （系统配置）
 | Twitter / X | twitterapi.io（需 Key） | Top 2 页 + Latest 1 页，本地质量过滤 |
 | Bing / Google / DuckDuckGo | 页面抓取 + cheerio | 随机 UA + 频率限制 |
 | HackerNews | Algolia 官方 API | 近 24h story |
-| 搜狗 | 页面抓取 | 替代百度，反爬较宽松 |
+| 搜狗 | 页面抓取 + cheerio | 替代百度，反爬较宽松 |
 | Bilibili | 公开 Web API | 视频搜索、用户搜索、账号投稿 |
-| 微博 | 热搜公开 API | 关键词匹配热搜话题 |
+| 微博 | 移动端关键词搜索 + 热搜兜底 | 可选 `WEIBO_COOKIE`；搜索被登录墙拦截时自动降级热搜 |
+| 微博 / 百度 / 抖音 / 头条 / B站 / 知乎热榜 | 公开热榜接口或页内嵌 JSON | 仅供全网热榜页使用，按榜单排名展示 |
+| IT之家 / 虎嗅 / 少数派 / 爱范儿 / Solidot | RSS / Atom | 按发布时间倒序解析，归入「科技资讯」 |
+| Hacker News 首页 | Algolia `front_page` API | 归入「全球视野」 |
 
-> 默认巡检并行调用 Twitter / Bing / HackerNews / 搜狗 / Bilibili / 微博 六个源；Google、DuckDuckGo 的采集实现已内置于 `services/search.ts`。
+> 默认巡检并行调用 Twitter / Bing / HackerNews / 搜狗 / Bilibili / 微博 六个源；Google、DuckDuckGo 的采集实现已内置于 `services/search.ts`。所有源共用统一 HTTP 层（重试、退避、412/429 识别、按域名限流），每次运行后可通过 `GET /api/sources/status` 查看各源状态。全网热榜是独立的聚合视图，通过 `GET /api/hot-board` 获取，默认缓存 5 分钟，不写入数据库。
 
 ---
 
@@ -213,15 +218,24 @@ monitor/
 │   │   │   ├── keywords.ts
 │   │   │   ├── hotspots.ts
 │   │   │   ├── notifications.ts
+│   │   │   ├── sources.ts               # GET /api/sources/status 采集源健康状态
 │   │   │   └── settings.ts
 │   │   ├── services/                    # 外部 IO 层：采集 / AI / 邮件
+│   │   │   ├── http.ts                  # 统一请求层：重试/退避/Retry-After/412/429/限流
 │   │   │   ├── twitter.ts               # Twitter / X
 │   │   │   ├── search.ts                # Bing / Google / DuckDuckGo / HackerNews
-│   │   │   ├── chinaSearch.ts           # 搜狗 / B站 / 微博
+│   │   │   ├── chinaSearch.ts           # 搜狗 / B站
+│   │   │   ├── weibo.ts                 # 微博关键词搜索 + 热搜兜底
+│   │   │   ├── cache.ts                 # 按关键词/源的 TTL 缓存
+│   │   │   ├── dedupe.ts                # URL 去重 + 语义近重复 + 跨平台事件聚类
+│   │   │   ├── queryType.ts             # 查询意图识别与来源优先级
+│   │   │   ├── sourceStatus.ts          # 采集源状态登记（ok/empty/error/timeout）
 │   │   │   ├── ai.ts                    # 查询扩展 + 内容分析（经 Provider 层调用）
 │   │   │   └── email.ts                 # SMTP 邮件
 │   │   ├── jobs/hotspotChecker.ts       # 巡检编排：唯一串联“采集→过滤→AI→入库→通知”的文件
-│   │   ├── utils/sortHotspots.ts        # 重要性 / 热度综合分的内存排序
+│   │   ├── utils/
+│   │   │   ├── sortHotspots.ts          # 分平台互动评分 + 时间衰减 + 内存排序
+│   │   │   └── text.ts                  # 中英文分词 / 相关性 / 相似度
 │   │   ├── test-sources.ts              # 本地脚本：逐个测试 6 个采集源是否可用
 │   │   └── __tests__/                   # Vitest 单测
 │   ├── prisma/
@@ -348,7 +362,7 @@ sequenceDiagram
 
 | 文件 | 职责 | 典型改动 |
 |------|------|----------|
-| [server/src/index.ts](server/src/index.ts) | 进程入口。挂载 4 组 REST 路由、`/api/health`、`POST /api/check-hotspots`；处理 Socket.io 连接与房间订阅；注册 node-cron | 改服务端口、定时频率（`*/30 * * * *`）、WebSocket 事件名、手动触发接口 |
+| [server/src/index.ts](server/src/index.ts) | 进程入口。挂载 7 组 REST 路由（关键词/热点/通知/设置/邮件/采集源状态/全网热榜）、`/api/health`、`POST /api/check-hotspots`；处理 Socket.io 连接与房间订阅；注册 node-cron | 改服务端口、定时频率（`*/30 * * * *`）、WebSocket 事件名、手动触发接口 |
 | [server/src/db.ts](server/src/db.ts) | 导出全局 `prisma` 实例 | 一般无需改动 |
 | [server/src/types.ts](server/src/types.ts) | `SearchResult`、`AIAnalysis`、`TwitterFilterConfig` 等共享类型 | **新增数据源时先在这里补字段**；调整 AI 返回结构 |
 | [server/src/jobs/hotspotChecker.ts](server/src/jobs/hotspotChecker.ts) | **巡检主编排**：账号检测 → 查询扩展 → 6 源并发 → 去重 → 新鲜度 → 优先级 → 配额 → AI → 阈值过滤 → 入库 → 推送 / 邮件 | **调整默认采集源、配额、7 天新鲜度、来源优先级、过滤阈值、邮件触发条件** |
@@ -362,6 +376,8 @@ sequenceDiagram
 | [server/src/services/ai.ts](server/src/services/ai.ts) | 查询扩展 `expandKeyword`（进程内缓存）、`preMatchKeyword` 预匹配、`analyzeContent` 内容分析、`batchAnalyze`；模型调用统一走 `services/llm/` Provider 层 | **改提示词、判定字段、无 Key 降级策略；换模型只改厂商配置** |
 | [server/src/services/email.ts](server/src/services/email.ts) | Nodemailer SMTP：`sendHotspotEmail` 单条 HTML 邮件；`sendDigestEmail` 日报（已实现但未被调用） | **改邮件模板、收件人、SMTP 配置；启用日报时在巡检里调用 digest** |
 | [server/src/utils/sortHotspots.ts](server/src/utils/sortHotspots.ts) | `importance` 与 `hot` 两种内存排序及热度加权公式 | 调整热度权重、重要性顺序 |
+| [server/src/services/hotBoard.ts](server/src/services/hotBoard.ts) | 全网热榜：微博 / 百度 / 抖音 / 头条 / B站 / 知乎 / HN 适配器、RSS/Atom 解析、跨平台同频热点聚类、5 分钟快照缓存 | **改热榜解析规则、RSS 源列表、聚类阈值** |
+| [server/src/routes/hotBoard.ts](server/src/routes/hotBoard.ts) | `GET /api/hot-board`（`refresh=1` 强制刷新，`sources` / `limit` 可选） | 调整接口参数与快照策略 |
 | [server/src/test-sources.ts](server/src/test-sources.ts) | 本地逐个验证采集源 | 新增源后加一条测试 |
 | [server/src/__tests__/](server/src/__tests__/) | AI 相关性与热点排序单测 | 改判定 / 排序逻辑后同步补测 |
 
@@ -369,7 +385,8 @@ sequenceDiagram
 
 | 文件 | 职责 | 典型改动 |
 |------|------|----------|
-| [client/src/App.tsx](client/src/App.tsx) | **单文件主应用**。状态、数据加载、WebSocket 监听、全部页面都在这里：仪表盘（约 470 行起）、监控词（约 877 行起）、全网搜索（约 974 行起） | 改页面布局、交互、卡片展示、Tab 结构 |
+| [client/src/App.tsx](client/src/App.tsx) | **单文件主应用**。状态、数据加载、WebSocket 监听、全部页面都在这里：仪表盘、全网热榜、监控词、全网搜索等 | 改页面布局、交互、卡片展示、Tab 结构 |
+| [client/src/components/HotBoard.tsx](client/src/components/HotBoard.tsx) | 全网热榜页面：同频热点、平台分组筛选、榜单卡片与展开 / 刷新 | 调整热榜展示与分组 |
 | [client/src/components/FilterSortBar.tsx](client/src/components/FilterSortBar.tsx) | 来源 / 重要性 / 关键词 / 真实性 / 时间筛选 + 5 种排序 | 增加筛选维度或排序项 |
 | [client/src/components/ui/](client/src/components/ui/) | 背景光束、流星、聚光灯、动态边框、文字动画等纯视觉组件 | 调整装饰效果 |
 | [client/src/services/api.ts](client/src/services/api.ts) | 所有 REST 请求封装（关键词 / 热点 / 通知 / 设置 / 手动触发） | 接口路径或请求参数变化 |
@@ -415,6 +432,7 @@ sequenceDiagram
 | 改页面 / 卡片 / Tab | [client/src/App.tsx](client/src/App.tsx) |
 | 改筛选排序 UI | [FilterSortBar.tsx](client/src/components/FilterSortBar.tsx)（前后端排序规则分别在两处 `sortHotspots.ts`） |
 | 改实时推送 | 服务端 [index.ts](server/src/index.ts#L51-L67) 与 [hotspotChecker.ts](server/src/jobs/hotspotChecker.ts#L222-L230)；前端 [socket.ts](client/src/services/socket.ts) |
+| 改热榜来源 / 解析规则 / 聚类阈值 | [hotBoard.ts](server/src/services/hotBoard.ts) 中的 `HOT_BOARD_DEFS` 与 `mergeTopics` |
 | 改技能包采集 / 报告 | [skills/hot-monitor/scripts/](skills/hot-monitor/scripts/) 与 [analysis-guide.md](skills/hot-monitor/references/analysis-guide.md) |
 
 ---
@@ -499,10 +517,12 @@ cd client && npm run dev
 | `GET` | `/api/hotspots/stats` | 统计数据 |
 | `POST` | `/api/hotspots/search` | 全网聚合搜索（不入库） |
 | `DELETE` | `/api/hotspots/:id` | 删除热点 |
+| `POST` | `/api/hotspots/batch-delete` | 批量删除热点（body: `{ ids: string[] }`） |
 | `GET` | `/api/notifications` | 通知列表 + 未读数 |
 | `PATCH` | `/api/notifications/:id/read` | 单条已读 |
 | `PATCH` | `/api/notifications/read-all` | 全部已读 |
 | `GET/PUT` | `/api/settings` | 系统配置读写 |
+| `GET` | `/api/hot-board` | 全网热榜快照（`refresh=1` 强制刷新，`sources` / `limit` 可选） |
 | `POST` | `/api/check-hotspots` | 手动触发一次巡检 |
 
 **WebSocket 事件**：客户端 `subscribe / unsubscribe`（按关键词订阅房间）；服务端推送 `hotspot:new`、`notification`。

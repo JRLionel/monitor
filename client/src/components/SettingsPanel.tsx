@@ -141,7 +141,7 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
 
   if (!data || !provider) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/[0.02] min-h-[560px] flex items-center justify-center">
+      <div className="rounded-2xl border border-[#dfe6ec] bg-white min-h-[560px] flex items-center justify-center">
         <Loader2 className="w-6 h-6 text-slate-600 animate-spin" />
       </div>
     );
@@ -150,9 +150,9 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
   const accent = PROVIDER_ACCENT[provider.id] ?? 'from-slate-500 to-slate-400';
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden flex flex-col md:flex-row min-h-[560px]">
+    <div className="rounded-2xl border border-[#dfe6ec] bg-white overflow-hidden flex flex-col md:flex-row min-h-[560px]">
       {/* 左侧服务商列表 */}
-      <aside className="md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-white/5 p-3 space-y-1">
+      <aside className="md:w-64 shrink-0 border-b md:border-b-0 md:border-r border-[#edf1f5] p-3 space-y-1">
         {data.providers.map(p => {
           const selected = p.id === provider.id;
           return (
@@ -162,8 +162,8 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
               className={cn(
                 'w-full flex items-center gap-3 px-3 py-3 rounded-xl text-left transition-all border',
                 selected
-                  ? 'bg-white/[0.06] border-white/10'
-                  : 'border-transparent hover:bg-white/[0.03]'
+                  ? 'bg-[#eef3f8] border-[#dfe6ec]'
+                  : 'border-transparent hover:bg-[#f5f8fb]'
               )}
             >
               <div
@@ -175,7 +175,7 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
                 {p.name.slice(0, 2)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={cn('text-sm truncate', selected ? 'text-white' : 'text-slate-300')}>
+                <p className={cn('text-sm truncate', selected ? 'text-[#0b1726]' : 'text-[#33475b]')}>
                   {p.name}
                 </p>
                 <p className="text-[11px] flex items-center gap-1.5 mt-0.5 text-slate-500">
@@ -188,7 +188,7 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
                   {p.configured ? '已配置' : '待完善配置'}
                 </p>
               </div>
-              {selected && <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
+              {selected && <ChevronRight className="w-4 h-4 text-[#5c6f82] shrink-0" />}
             </button>
           );
         })}
@@ -206,14 +206,14 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
             >
               {provider.name.slice(0, 2)}
             </div>
-            <h2 className="text-xl font-semibold text-white">{provider.name}</h2>
+            <h2 className="text-xl font-semibold text-[#0b1726]">{provider.name}</h2>
           </div>
           {provider.docsUrl && (
             <a
               href={provider.docsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/10 text-xs text-slate-300 hover:text-white hover:border-white/20 transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#dfe6ec] text-xs text-[#33475b] hover:text-[#0b1726] hover:border-[#c9d5df] transition-all"
             >
               获取密钥
               <ExternalLink className="w-3.5 h-3.5" />
@@ -221,12 +221,12 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
           )}
         </div>
 
-        <div className="h-px bg-white/5 my-6" />
+        <div className="h-px bg-[#f7f9fb] my-6" />
 
         {/* API 密钥 */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label className="text-sm text-slate-300">API 密钥</label>
+            <label className="text-sm text-[#33475b]">API 密钥</label>
             {provider.hasKey && (
               <span className="text-[11px] text-slate-600">已保存 {provider.apiKeyMasked}</span>
             )}
@@ -242,12 +242,12 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
                     ? '已保存，输入新密钥可覆盖'
                     : provider.keyPlaceholder ?? '填入该厂商的 API Key'
                 }
-                className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-white/5 border border-white/10 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                className="w-full pl-4 pr-11 py-2.5 rounded-xl bg-[#f7f9fb] border border-[#dfe6ec] text-sm text-[#0b1726] placeholder-[#9aa8b5] focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowKey(v => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#33475b] transition-colors"
               >
                 {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -255,7 +255,7 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
             <button
               onClick={handleSaveKey}
               disabled={!keyInput.trim() || isSavingKey}
-              className="px-4 rounded-xl text-sm font-medium bg-blue-500/15 text-blue-400 border border-blue-500/25 hover:bg-blue-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-4 rounded-xl text-sm font-medium bg-blue-500/15 text-[#1d4ed8] border border-blue-500/25 hover:bg-blue-500/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {isSavingKey ? '保存中' : '保存'}
             </button>
@@ -265,15 +265,15 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
         {/* 可用模型 */}
         <div className="flex items-center justify-between mt-8 mb-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-white">可用模型</h3>
-            <span className="text-[11px] px-2 py-0.5 rounded-md bg-white/5 text-slate-400">
+            <h3 className="text-sm font-medium text-[#0b1726]">可用模型</h3>
+            <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#f7f9fb] text-[#5c6f82]">
               {provider.models.length} 个模型
             </span>
           </div>
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-slate-400 hover:text-white hover:border-white/20 transition-all disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#dfe6ec] text-xs text-[#5c6f82] hover:text-[#0b1726] hover:border-[#c9d5df] transition-all disabled:opacity-50"
           >
             <RefreshCw className={cn('w-3.5 h-3.5', isRefreshing && 'animate-spin')} />
             获取模型列表
@@ -290,22 +290,22 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
                 key={model.id}
                 onClick={() => handleSelectModel(model)}
                 className={cn(
-                  'p-4 rounded-xl border bg-white/[0.02] flex flex-col gap-2 cursor-pointer transition-all',
+                  'p-4 rounded-xl border bg-white flex flex-col gap-2 cursor-pointer transition-all',
                   selected
                     ? 'border-blue-500/40 bg-blue-500/[0.06]'
-                    : 'border-white/10 hover:border-white/20'
+                    : 'border-[#dfe6ec] hover:border-[#c9d5df]'
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-medium text-white truncate">{model.label}</span>
+                    <span className="text-sm font-medium text-[#0b1726] truncate">{model.label}</span>
                     {model.recommended && (
-                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                      <span className="shrink-0 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 border border-amber-500/20">
                         推荐
                       </span>
                     )}
                     {selected && (
-                      <span className="shrink-0 flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                      <span className="shrink-0 flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 border border-emerald-500/20">
                         <Check className="w-2.5 h-2.5" />
                         使用中
                       </span>
@@ -315,7 +315,7 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
                     {model.capabilities.map(capability => (
                       <span
                         key={capability}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-slate-400 border border-white/10"
+                        className="text-[10px] px-1.5 py-0.5 rounded bg-[#f7f9fb] text-[#5c6f82] border border-[#dfe6ec]"
                       >
                         {capability}
                       </span>
@@ -332,7 +332,7 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
                       handleTest(model);
                     }}
                     disabled={test.status === 'loading'}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 text-xs text-slate-300 hover:text-white hover:border-white/20 transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#dfe6ec] text-xs text-[#33475b] hover:text-[#0b1726] hover:border-[#c9d5df] transition-all disabled:opacity-50"
                   >
                     {test.status === 'loading' ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -343,14 +343,14 @@ export default function SettingsPanel({ onToast }: SettingsPanelProps) {
                   </button>
 
                   {test.status === 'ok' && (
-                    <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-emerald-400">
+                    <span className="ml-2 inline-flex items-center gap-1 text-[11px] text-emerald-700">
                       <Check className="w-3 h-3" />
                       连接正常 · {test.message}
                     </span>
                   )}
                   {test.status === 'error' && (
                     <span
-                      className="ml-2 inline-flex items-center gap-1 text-[11px] text-red-400 max-w-[60%] truncate align-middle"
+                      className="ml-2 inline-flex items-center gap-1 text-[11px] text-red-600 max-w-[60%] truncate align-middle"
                       title={test.message}
                     >
                       <X className="w-3 h-3 shrink-0" />

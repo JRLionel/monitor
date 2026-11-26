@@ -12,6 +12,8 @@ import settingsRouter from './routes/settings.js';
 import aiRouter from './routes/ai.js';
 import notificationsRouter from './routes/notifications.js';
 import emailRouter from './routes/email.js';
+import sourcesRouter from './routes/sources.js';
+import hotBoardRouter from './routes/hotBoard.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
 
 dotenv.config();
@@ -36,6 +38,8 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/ai', aiRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/email', emailRouter);
+app.use('/api/sources', sourcesRouter);
+app.use('/api/hot-board', hotBoardRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {

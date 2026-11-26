@@ -7,7 +7,8 @@ dotenv.config();
 
 import { searchTwitter } from './services/twitter.js';
 import { searchBing, searchHackerNews } from './services/search.js';
-import { searchSogou, searchBilibili, searchWeibo } from './services/chinaSearch.js';
+import { searchSogou, searchBilibili } from './services/chinaSearch.js';
+import { searchWeibo } from './services/weibo.js';
 
 const TEST_QUERY = 'Codex';
 

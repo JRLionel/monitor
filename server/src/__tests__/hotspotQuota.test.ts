@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { cacheClear } from '../services/cache.js';
 
 /**
  * 巡检配额回归测试
@@ -42,15 +43,17 @@ vi.mock('../services/twitter.js', () => ({
 
 vi.mock('../services/search.js', () => ({
   searchBing: async () => [],
-  searchHackerNews: async () => [],
-  deduplicateResults: (items: any[]) => items
+  searchHackerNews: async () => []
 }));
 
 vi.mock('../services/chinaSearch.js', () => ({
   searchSogou: async () => [],
   searchBilibili: async () => [],
-  searchWeibo: async () => weiboItems,
   detectAndFetchAccount: async () => ({ accounts: [], results: [] })
+}));
+
+vi.mock('../services/weibo.js', () => ({
+  searchWeibo: async () => weiboItems
 }));
 
 vi.mock('../services/ai.js', () => ({
@@ -81,6 +84,7 @@ describe('巡检配额（回归）', () => {
     analyzed.length = 0;
     twitterItems = [];
     weiboItems = [];
+    cacheClear();
   });
 
   it('Twitter 结果超过配额时，AI 分析次数不超过 15', async () => {
