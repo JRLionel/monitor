@@ -44,13 +44,10 @@ const SORT_OPTIONS = [
 const SOURCE_OPTIONS = [
   { value: '', label: '全部来源' },
   { value: 'twitter', label: 'Twitter' },
-  { value: 'bing', label: 'Bing' },
-  { value: 'google', label: 'Google' },
-  { value: 'sogou', label: '搜狗' },
   { value: 'bilibili', label: 'Bilibili' },
   { value: 'weibo', label: '微博热搜' },
+  { value: 'juejin', label: '稀土掘金' },
   { value: 'hackernews', label: 'HackerNews' },
-  { value: 'duckduckgo', label: 'DuckDuckGo' },
 ];
 
 const IMPORTANCE_OPTIONS = [

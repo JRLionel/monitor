@@ -104,6 +104,16 @@ export const keywordsApi = {
 };
 
 // Hotspots API
+export type ScheduleMode = 'interval' | 'daily';
+
+/** 定时设置：公众号刷新与热点巡检共用同一结构 */
+export interface CheckSchedule {
+  mode: ScheduleMode;
+  intervalMinutes: number;
+  dailyTime: string;
+  lastRunAt: string | null;
+}
+
 export interface SearchResultItem {
   title: string;
   content: string;
@@ -177,7 +187,19 @@ export const hotspotsApi = {
     request<{ deleted: number }>('/hotspots/batch-delete', {
       method: 'POST',
       body: JSON.stringify({ ids })
-    })
+    }),
+
+  getSchedule: () => request<CheckSchedule>('/hotspots/schedule'),
+
+  saveSchedule: (data: {
+    mode: ScheduleMode;
+    intervalMinutes: number;
+    dailyTime: string;
+  }) =>
+    request<CheckSchedule>('/hotspots/schedule', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // Notifications API
@@ -352,6 +374,148 @@ export const hotBoardApi = {
     const query = searchParams.toString();
     return request<HotBoardSnapshot>(`/hot-board${query ? `?${query}` : ''}`);
   },
+};
+
+// ========== 公众号订阅 ==========
+
+export interface WechatAccount {
+  id: string;
+  name: string;
+  bizId: string | null;
+  avatar: string | null;
+  description: string | null;
+  sourceType: string;
+  feedUrl: string;
+  isActive: boolean;
+  baselineDone: boolean;
+  lastCheckedAt: string | null;
+  lastArticleAt: string | null;
+  failCount: number;
+  lastError: string | null;
+  nextCheckAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  unreadCount?: number;
+  articleCount?: number;
+  isBuiltin?: boolean;
+}
+
+export interface WechatArticle {
+  id: string;
+  accountId: string;
+  title: string;
+  url: string;
+  digest: string | null;
+  coverUrl: string | null;
+  author: string | null;
+  publishedAt: string | null;
+  isRead: boolean;
+  createdAt: string;
+  account?: { id: string; name: string; avatar: string | null };
+}
+
+export interface WechatFeedPreviewItem {
+  title: string;
+  url: string;
+  digest: string;
+  coverUrl: string | null;
+  author: string | null;
+  publishedAt: string | null;
+}
+
+export interface WechatFeedPreview {
+  feedTitle: string;
+  itemCount: number;
+  items: WechatFeedPreviewItem[];
+}
+
+export interface WechatCheckResult {
+  accountId: string;
+  inserted: number;
+  baseline?: boolean;
+  error?: string;
+  account?: WechatAccount;
+}
+
+export type WechatScheduleMode = ScheduleMode;
+
+export type WechatSchedule = CheckSchedule;
+
+export const wechatApi = {
+  getAccounts: () => request<WechatAccount[]>('/wechat/accounts'),
+
+  testFeed: (feedUrl: string) =>
+    request<WechatFeedPreview>('/wechat/test-feed', {
+      method: 'POST',
+      body: JSON.stringify({ feedUrl }),
+    }),
+
+  createAccount: (data: { name: string; feedUrl: string; description?: string }) =>
+    request<WechatAccount>('/wechat/accounts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateAccount: (id: string, data: Partial<Pick<WechatAccount, 'name' | 'feedUrl' | 'isActive'>>) =>
+    request<WechatAccount>(`/wechat/accounts/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  toggleAccount: (id: string) =>
+    request<WechatAccount>(`/wechat/accounts/${id}/toggle`, { method: 'PATCH' }),
+
+  removeAccount: (id: string) =>
+    request<void>(`/wechat/accounts/${id}`, { method: 'DELETE' }),
+
+  checkAccount: (id: string) =>
+    request<WechatCheckResult>(`/wechat/accounts/${id}/check`, { method: 'POST' }),
+
+  checkAll: () =>
+    request<{ checked: number; inserted: number; failed: number }>('/wechat/check-all', {
+      method: 'POST',
+    }),
+
+  getArticles: (params?: {
+    accountId?: string;
+    page?: number;
+    limit?: number;
+    unreadOnly?: boolean;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.accountId) searchParams.append('accountId', params.accountId);
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    if (params?.unreadOnly) searchParams.append('unreadOnly', '1');
+    const query = searchParams.toString();
+    return request<{
+      data: WechatArticle[];
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(`/wechat/articles${query ? `?${query}` : ''}`);
+  },
+
+  getUnreadCount: () =>
+    request<{ total: number; byAccount: { accountId: string; count: number }[] }>(
+      '/wechat/unread-count'
+    ),
+
+  markRead: (data: { ids?: string[]; accountId?: string; all?: boolean }) =>
+    request<{ updated: number }>('/wechat/articles/read', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  getSchedule: () => request<WechatSchedule>('/wechat/settings'),
+
+  saveSchedule: (data: {
+    mode: WechatScheduleMode;
+    intervalMinutes: number;
+    dailyTime: string;
+  }) =>
+    request<WechatSchedule>('/wechat/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 };
 
 // ========== 邮件通知配置 ==========

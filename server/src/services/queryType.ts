@@ -42,13 +42,13 @@ export function detectQueryType(topic: string): QueryType {
  * 与 last30days 的 tier 思路一致，但不直接丢弃数据源，避免降低召回。
  */
 export const SOURCE_PRIORITY_BY_QUERY_TYPE: Record<QueryType, Record<string, number>> = {
-  breaking_news: { twitter: 0, weibo: 1, bing: 2, sogou: 3, hackernews: 4, bilibili: 5 },
-  product: { weibo: 0, bilibili: 1, twitter: 2, sogou: 3, bing: 4, hackernews: 5 },
-  opinion: { weibo: 0, twitter: 1, bilibili: 2, sogou: 3, bing: 4, hackernews: 5 },
-  how_to: { bilibili: 0, sogou: 1, bing: 2, twitter: 3, weibo: 4, hackernews: 5 },
-  comparison: { bilibili: 0, sogou: 1, twitter: 2, weibo: 3, bing: 4, hackernews: 5 },
-  concept: { sogou: 0, bing: 1, twitter: 2, weibo: 3, bilibili: 4, hackernews: 5 },
-  prediction: { weibo: 0, sogou: 1, twitter: 2, bing: 3, bilibili: 4, hackernews: 5 },
+  breaking_news: { twitter: 0, weibo: 1, hackernews: 2, bilibili: 3, juejin: 4 },
+  product: { weibo: 0, bilibili: 1, twitter: 2, juejin: 3, hackernews: 4 },
+  opinion: { weibo: 0, twitter: 1, bilibili: 2, juejin: 3, hackernews: 4 },
+  how_to: { bilibili: 0, juejin: 1, twitter: 2, weibo: 3, hackernews: 4 },
+  comparison: { bilibili: 0, juejin: 1, twitter: 2, weibo: 3, hackernews: 4 },
+  concept: { juejin: 0, twitter: 1, weibo: 2, bilibili: 3, hackernews: 4 },
+  prediction: { weibo: 0, twitter: 1, bilibili: 2, juejin: 3, hackernews: 4 },
 };
 
 const FALLBACK_PRIORITY: Record<string, number> = {
@@ -56,10 +56,7 @@ const FALLBACK_PRIORITY: Record<string, number> = {
   weibo: 2,
   bilibili: 3,
   hackernews: 4,
-  sogou: 5,
-  bing: 6,
-  google: 7,
-  duckduckgo: 8,
+  juejin: 5,
 };
 
 export function sourcePriority(source: string, queryType?: QueryType): number {

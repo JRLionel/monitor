@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { prisma } from '../db.js';
 import { sortHotspots } from '../utils/sortHotspots.js';
+import { getHotspotSchedule, saveHotspotSchedule } from '../services/hotspot/schedule.js';
 
 const router = Router();
 
@@ -162,6 +163,25 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// 获取巡检计划设置
+router.get('/schedule', async (_req, res) => {
+  try {
+    res.json(await getHotspotSchedule());
+  } catch (error) {
+    console.error('Error fetching hotspot schedule:', error);
+    res.status(500).json({ error: '获取巡检设置失败' });
+  }
+});
+
+// 保存巡检计划设置
+router.put('/schedule', async (req, res) => {
+  try {
+    res.json(await saveHotspotSchedule(req.body ?? {}));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : '保存巡检设置失败' });
+  }
+});
+
 // 获取单个热点
 router.get('/:id', async (req, res) => {
   try {
@@ -186,7 +206,7 @@ router.get('/:id', async (req, res) => {
 // 手动搜索热点
 router.post('/search', async (req, res) => {
   try {
-    const { query, sources = ['twitter', 'bing'] } = req.body;
+    const { query, sources = ['twitter'] } = req.body;
 
     if (!query) {
       return res.status(400).json({ error: 'Query is required' });
@@ -194,7 +214,6 @@ router.post('/search', async (req, res) => {
 
     // 导入搜索服务
     const { searchTwitter } = await import('../services/twitter.js');
-    const { searchBing } = await import('../services/search.js');
     const { analyzeContent } = await import('../services/ai.js');
 
     const results: any[] = [];
@@ -206,16 +225,6 @@ router.post('/search', async (req, res) => {
         results.push(...tweets);
       } catch (error) {
         console.error('Twitter search failed:', error);
-      }
-    }
-
-    // Bing 搜索
-    if (sources.includes('bing')) {
-      try {
-        const webResults = await searchBing(query);
-        results.push(...webResults);
-      } catch (error) {
-        console.error('Bing search failed:', error);
       }
     }
 

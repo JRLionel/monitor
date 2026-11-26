@@ -61,6 +61,11 @@ export function engagementRaw(item: SortableHotspot): number | null {
     );
   }
 
+  if (source === 'juejin') {
+    if (allMissing([views, likes, comments])) return null;
+    return 0.5 * log1pSafe(views) + 0.3 * log1pSafe(likes) + 0.2 * log1pSafe(comments);
+  }
+
   if (source === 'hackernews') {
     if (allMissing([item.score, comments, views])) return null;
     return 0.45 * log1pSafe(item.score) + 0.35 * log1pSafe(comments) + 0.1 * log1pSafe(views ? views / 1000 : 0);

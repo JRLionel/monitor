@@ -6,8 +6,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import { searchTwitter } from './services/twitter.js';
-import { searchBing, searchHackerNews } from './services/search.js';
-import { searchSogou, searchBilibili } from './services/chinaSearch.js';
+import { searchHackerNews } from './services/search.js';
+import { searchBilibili } from './services/chinaSearch.js';
+import { searchJuejin } from './services/juejin.js';
 import { searchWeibo } from './services/weibo.js';
 
 const TEST_QUERY = 'Codex';
@@ -42,10 +43,9 @@ async function main() {
   const results = [];
 
   results.push(await testSource('Twitter', () => searchTwitter(TEST_QUERY)));
-  results.push(await testSource('Bing', () => searchBing(TEST_QUERY)));
   results.push(await testSource('HackerNews', () => searchHackerNews(TEST_QUERY)));
-  results.push(await testSource('Sogou', () => searchSogou(TEST_QUERY)));
   results.push(await testSource('Bilibili', () => searchBilibili(TEST_QUERY)));
+  results.push(await testSource('Juejin', () => searchJuejin(TEST_QUERY)));
   results.push(await testSource('Weibo', () => searchWeibo(TEST_QUERY)));
 
   console.log(`\n${'='.repeat(50)}`);

@@ -25,7 +25,7 @@ model Hotspot {
   title           String
   content         String
   url             String
-  source          String    // twitter, bing, google
+  source          String    // twitter, hackernews, bilibili, juejin, weibo
   sourceId        String?   // 原始推文ID等
   isReal          Boolean   @default(true)
   relevance       Int       @default(0)
@@ -91,4 +91,42 @@ model EmailRecipient {
   isEnabled Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// 公众号订阅
+model WechatAccount {
+  id            String          @id @default(uuid())
+  name          String          // 公众号名称
+  bizId         String?         // 公众号 __biz 标识（可选）
+  avatar        String?         // 头像地址
+  description   String?         // 简介
+  sourceType    String          @default("rss") // rss | sogou | api，预留多来源
+  feedUrl       String          @unique        // 文章源地址
+  isActive      Boolean         @default(true)
+  baselineDone  Boolean         @default(false) // 是否已建立首批基线
+  lastCheckedAt DateTime?
+  lastArticleAt DateTime?       // 已见最新文章时间
+  failCount     Int             @default(0)
+  lastError     String?
+  nextCheckAt   DateTime?       // 失败退避后的下次检查时间
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  articles      WechatArticle[]
+}
+
+// 公众号文章
+model WechatArticle {
+  id          String        @id @default(uuid())
+  account     WechatAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId   String
+  title       String
+  url         String        @unique
+  digest      String?
+  coverUrl    String?
+  author      String?
+  publishedAt DateTime?
+  isRead      Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+
+  @@index([accountId, publishedAt])
 }

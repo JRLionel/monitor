@@ -14,7 +14,20 @@ import notificationsRouter from './routes/notifications.js';
 import emailRouter from './routes/email.js';
 import sourcesRouter from './routes/sources.js';
 import hotBoardRouter from './routes/hotBoard.js';
+import createWechatRouter from './routes/wechat.js';
+import { seedBuiltinWechatSources } from './services/wechat/builtin.js';
 import { runHotspotCheck } from './jobs/hotspotChecker.js';
+import { runWechatCheck } from './jobs/wechatChecker.js';
+import {
+  getWechatSchedule,
+  isWechatScheduleDue,
+  markWechatScheduleRun,
+} from './services/wechat/schedule.js';
+import {
+  getHotspotSchedule,
+  isHotspotScheduleDue,
+  markHotspotScheduleRun,
+} from './services/hotspot/schedule.js';
 
 dotenv.config();
 
@@ -40,6 +53,7 @@ app.use('/api/notifications', notificationsRouter);
 app.use('/api/email', emailRouter);
 app.use('/api/sources', sourcesRouter);
 app.use('/api/hot-board', hotBoardRouter);
+app.use('/api/wechat', createWechatRouter(io));
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -74,14 +88,46 @@ io.on('connection', (socket) => {
   });
 });
 
-// Scheduled job: Run hotspot check every 30 minutes
-cron.schedule('*/30 * * * *', async () => {
-  console.log('🔄 Running scheduled hotspot check...');
+// Scheduled job: 每分钟按「热点雷达 - 巡检设置」判断是否执行巡检
+let hotspotTickRunning = false;
+cron.schedule('* * * * *', async () => {
+  if (hotspotTickRunning) return;
+  hotspotTickRunning = true;
   try {
+    const schedule = await getHotspotSchedule();
+    const lastRunAt = schedule.lastRunAt ? new Date(schedule.lastRunAt) : null;
+    const now = new Date();
+    if (!isHotspotScheduleDue(schedule, lastRunAt, now)) return;
+
+    console.log('🔄 Running scheduled hotspot check...');
     await runHotspotCheck(io);
+    await markHotspotScheduleRun(now);
     console.log('✅ Scheduled hotspot check completed');
   } catch (error) {
     console.error('❌ Scheduled hotspot check failed:', error);
+  } finally {
+    hotspotTickRunning = false;
+  }
+});
+
+// Scheduled job: 每分钟按「公众号订阅 - 刷新设置」判断是否执行刷新
+let wechatTickRunning = false;
+cron.schedule('* * * * *', async () => {
+  if (wechatTickRunning) return;
+  wechatTickRunning = true;
+  try {
+    const schedule = await getWechatSchedule();
+    const lastRunAt = schedule.lastRunAt ? new Date(schedule.lastRunAt) : null;
+    const now = new Date();
+    if (!isWechatScheduleDue(schedule, lastRunAt, now)) return;
+
+    console.log('📰 Running scheduled WeChat subscription check...');
+    await runWechatCheck(io);
+    await markWechatScheduleRun(now);
+  } catch (error) {
+    console.error('❌ Scheduled WeChat check failed:', error);
+  } finally {
+    wechatTickRunning = false;
   }
 });
 
@@ -95,8 +141,11 @@ httpServer.listen(PORT, () => {
   🔥 热点监控服务启动成功!
   📡 Server running on http://localhost:${PORT}
   🔌 WebSocket ready
-  ⏰ Hotspot check scheduled every 30 minutes
+  ⏰ Hotspot check follows the radar patrol schedule
   `);
+
+  // 内置默认订阅（配置写死、不可删除），启动时自动同步
+  void seedBuiltinWechatSources(io);
 });
 
 // Graceful shutdown

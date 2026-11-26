@@ -82,6 +82,23 @@ export function onSourceStatus(callback: (status: SourceStatusSnapshot) => void)
   return () => s.off('source:status', callback);
 }
 
+export interface WechatNewEvent {
+  accountId: string;
+  accountName: string;
+  article: {
+    id: string;
+    title: string;
+    url: string;
+    publishedAt: string | null;
+  };
+}
+
+export function onWechatNew(callback: (event: WechatNewEvent) => void): () => void {
+  const s = getSocket();
+  s.on('wechat:new', callback);
+  return () => s.off('wechat:new', callback);
+}
+
 export function disconnectSocket(): void {
   if (socket) {
     socket.disconnect();

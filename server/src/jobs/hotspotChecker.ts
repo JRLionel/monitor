@@ -1,8 +1,9 @@
 import { Server } from 'socket.io';
 import { prisma } from '../db.js';
 import { searchTwitter } from '../services/twitter.js';
-import { searchBing, searchHackerNews } from '../services/search.js';
-import { searchSogou, searchBilibili, detectAndFetchAccount } from '../services/chinaSearch.js';
+import { searchHackerNews } from '../services/search.js';
+import { searchBilibili, detectAndFetchAccount } from '../services/chinaSearch.js';
+import { searchJuejin } from '../services/juejin.js';
 import { searchWeibo } from '../services/weibo.js';
 import { analyzeContent, expandKeyword, preMatchKeyword } from '../services/ai.js';
 import { sendHotspotEmail } from '../services/email.js';
@@ -18,17 +19,16 @@ const MAX_AGE_HOURS = 7 * 24; // 7天
 const SEARCH_CACHE_TTL_MS = Number(process.env.SEARCH_CACHE_TTL_MS || 20 * 60 * 1000);
 const SOURCE_TIMEOUTS: Record<string, number> = {
   twitter: 30_000,
-  bing: 20_000,
   hackernews: 20_000,
-  sogou: 20_000,
   bilibili: 20_000,
+  juejin: 20_000,
   weibo: 25_000,
 };
 
 function filterByFreshness(results: SearchResult[]): SearchResult[] {
   const cutoff = new Date(Date.now() - MAX_AGE_HOURS * 3600 * 1000);
   return results.filter(item => {
-    // 没有发布时间的，暂时保留（搜索引擎结果通常没有时间）
+    // 没有发布时间的，暂时保留
     if (!item.publishedAt) return true;
     return item.publishedAt >= cutoff;
   });
@@ -83,10 +83,9 @@ export async function runHotspotCheck(io: Server): Promise<void> {
       // 第二步：从多个来源获取数据（国际 + 国内并行请求）
       const sourceDefs = [
         { id: 'twitter', fn: () => searchTwitter(keyword.text) },
-        { id: 'bing', fn: () => searchBing(keyword.text) },
         { id: 'hackernews', fn: () => searchHackerNews(keyword.text) },
-        { id: 'sogou', fn: () => searchSogou(keyword.text) },
         { id: 'bilibili', fn: () => searchBilibili(keyword.text) },
+        { id: 'juejin', fn: () => searchJuejin(keyword.text) },
         { id: 'weibo', fn: () => searchWeibo(keyword.text) },
       ] as const;
 

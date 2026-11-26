@@ -28,8 +28,8 @@ describe('tokenOverlapRelevance', () => {
 describe('dedupeItems', () => {
   it('相同 URL 只保留一条', () => {
     const items = [
-      item({ title: 'A', url: 'https://example.com/a', source: 'bing' }),
-      item({ title: 'A', url: 'https://example.com/a/', source: 'sogou' }),
+      item({ title: 'A', url: 'https://example.com/a', source: 'hackernews' }),
+      item({ title: 'A', url: 'https://example.com/a/', source: 'weibo' }),
     ];
     expect(dedupeItems(items)).toHaveLength(1);
   });
@@ -37,7 +37,7 @@ describe('dedupeItems', () => {
   it('近重复标题会合并', () => {
     const items = [
       item({ title: 'OpenAI 发布 GPT-5 模型', url: 'https://a.com/1', source: 'weibo' }),
-      item({ title: 'OpenAI 正式发布 GPT-5 模型', url: 'https://b.com/2', source: 'bing' }),
+      item({ title: 'OpenAI 正式发布 GPT-5 模型', url: 'https://b.com/2', source: 'hackernews' }),
     ];
     expect(dedupeItems(items)).toHaveLength(1);
   });
@@ -45,7 +45,7 @@ describe('dedupeItems', () => {
   it('数字不同视为不同事件', () => {
     const items = [
       item({ title: 'OpenAI 发布 GPT-5 模型', url: 'https://a.com/1', source: 'weibo' }),
-      item({ title: 'OpenAI 发布 GPT-6 模型', url: 'https://b.com/2', source: 'bing' }),
+      item({ title: 'OpenAI 发布 GPT-6 模型', url: 'https://b.com/2', source: 'hackernews' }),
     ];
     expect(dedupeItems(items)).toHaveLength(2);
   });
@@ -56,12 +56,12 @@ describe('clusterByEvent', () => {
     const items = [
       item({ title: 'OpenAI 发布 GPT-5 模型', url: 'https://weibo.com/1', source: 'weibo' }),
       item({ title: 'OpenAI 正式发布 GPT-5 模型', url: 'https://x.com/2', source: 'twitter' }),
-      item({ title: 'OpenAI 发布 GPT-5 模型，性能大幅提升', url: 'https://b.com/3', source: 'bing' }),
-      item({ title: '今天天气很好', url: 'https://c.com/4', source: 'sogou' }),
+      item({ title: 'OpenAI 发布 GPT-5 模型，性能大幅提升', url: 'https://b.com/3', source: 'hackernews' }),
+      item({ title: '今天天气很好', url: 'https://c.com/4', source: 'bilibili' }),
     ];
     const clusters = clusterByEvent(items);
     expect(clusters).toHaveLength(1);
-    expect(clusters[0].sources.sort()).toEqual(['bing', 'twitter', 'weibo']);
+    expect(clusters[0].sources.sort()).toEqual(['hackernews', 'twitter', 'weibo']);
   });
 });
 

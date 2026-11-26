@@ -17,10 +17,9 @@ export interface SourceStatusEntry {
 
 export const SOURCE_LABELS: Record<string, string> = {
   twitter: 'Twitter',
-  bing: 'Bing',
   hackernews: 'Hacker News',
-  sogou: '搜狗',
   bilibili: 'B站',
+  juejin: '掘金',
   weibo: '微博',
 };
 

@@ -42,18 +42,20 @@ vi.mock('../services/twitter.js', () => ({
 }));
 
 vi.mock('../services/search.js', () => ({
-  searchBing: async () => [],
   searchHackerNews: async () => []
 }));
 
 vi.mock('../services/chinaSearch.js', () => ({
-  searchSogou: async () => [],
   searchBilibili: async () => [],
   detectAndFetchAccount: async () => ({ accounts: [], results: [] })
 }));
 
 vi.mock('../services/weibo.js', () => ({
   searchWeibo: async () => weiboItems
+}));
+
+vi.mock('../services/juejin.js', () => ({
+  searchJuejin: async () => []
 }));
 
 vi.mock('../services/ai.js', () => ({

@@ -1,60 +1,8 @@
-import * as cheerio from 'cheerio';
 import crypto from 'crypto';
 import type { SearchResult } from '../types.js';
 import { browserHeaders, HttpError, RateLimiter, httpGet } from './http.js';
-import { searchWeibo } from './weibo.js';
 
-const sogouLimiter = new RateLimiter(3000);
 const bilibiliLimiter = new RateLimiter(2000);
-
-// ============================================================
-// 搜狗搜索（替代百度，反爬更宽松，无需 API Key）
-// ============================================================
-export async function searchSogou(query: string): Promise<SearchResult[]> {
-  try {
-    const response = await httpGet<string>('https://www.sogou.com/web', {
-      params: { query, ie: 'utf-8' },
-      headers: browserHeaders('desktop', 'https://www.sogou.com/'),
-      responseType: 'text',
-      limiter: sogouLimiter,
-      timeoutMs: 15_000,
-      retries: 2,
-      label: 'sogou',
-    });
-
-    const $ = cheerio.load(response.data);
-    const results: SearchResult[] = [];
-
-    $('.vrwrap, .rb').each((_, element) => {
-      const titleElement = $(element).find('h3 a, .vr-title a, .vrTitle a').first();
-      const title = titleElement.text().trim();
-      let url = titleElement.attr('href') || '';
-
-      if (url.startsWith('/link?url=')) {
-        url = `https://www.sogou.com${url}`;
-      }
-
-      const snippet =
-        $(element).find('.space-txt, .str-text-info, .str_info, .text-layout').text().trim() ||
-        $(element).find('p').first().text().trim();
-
-      if (title && url && !title.includes('大家还在搜')) {
-        results.push({
-          title,
-          content: snippet || title,
-          url,
-          source: 'sogou',
-        });
-      }
-    });
-
-    console.log(`Sogou search for "${query}": found ${results.length} results`);
-    return results;
-  } catch (error) {
-    console.error('Sogou search error:', error instanceof Error ? error.message : error);
-    throw error;
-  }
-}
 
 // ============================================================
 // Bilibili 搜索（公开 API，无需 API Key）
@@ -328,29 +276,4 @@ export async function detectAndFetchAccount(keyword: string): Promise<{
   }
 
   return { accounts, results };
-}
-
-// ============================================================
-// 国内聚合搜索
-// ============================================================
-export async function searchAllChina(query: string): Promise<SearchResult[]> {
-  const results = await Promise.allSettled([
-    searchSogou(query),
-    searchBilibili(query),
-    searchWeibo(query),
-  ]);
-
-  const allResults: SearchResult[] = [];
-  const sourceNames = ['Sogou', 'Bilibili', 'Weibo'];
-
-  results.forEach((result, index) => {
-    if (result.status === 'fulfilled') {
-      allResults.push(...result.value);
-      console.log(`  ${sourceNames[index]}: ${result.value.length} results`);
-    } else {
-      console.warn(`  ${sourceNames[index]} search failed:`, result.reason);
-    }
-  });
-
-  return allResults;
 }

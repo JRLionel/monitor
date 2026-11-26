@@ -1,18 +1,18 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Flame, Search, Plus, Bell, Trash2, 
+  Flame, Search, Bell, Trash2, 
   ExternalLink, RefreshCw, X, Check, AlertTriangle,
   Zap, TrendingUp, Twitter, Globe, Eye, Activity, Clock, Target,
   ChevronLeft, ChevronRight,
   MessageCircle, Repeat2, Quote, User, Shield, ShieldAlert,
   ChevronDown, ChevronUp, ChevronsUpDown, ThermometerSun, FileText,
-  Settings as SettingsIcon, Database, Mail
+  Settings as SettingsIcon, Database, Mail, Rss
 } from 'lucide-react';
 import { 
   keywordsApi, hotspotsApi, notificationsApi, sourcesApi, triggerHotspotCheck,
   type Keyword, type Hotspot, type Stats, type Notification,
-  type SourceStatusEntry, type SourceStatusSnapshot
+  type CheckSchedule, type SourceStatusSnapshot
 } from './services/api';
 import { onNewHotspot, onNotification, onSourceStatus, subscribeToKeywords } from './services/socket';
 import { cn } from './lib/utils';
@@ -20,6 +20,11 @@ import FilterSortBar, { defaultFilterState, type FilterState } from './component
 import SettingsPanel from './components/SettingsPanel';
 import EmailConfigPanel from './components/EmailConfigPanel';
 import HotBoardPanel from './components/HotBoard';
+import WechatSubscriptionsPanel from './components/WechatSubscriptions';
+import KeywordsModal from './components/KeywordsModal';
+import SourcesModal from './components/SourcesModal';
+import ScheduleModal from './components/ScheduleModal';
+import { formatScheduleLabel } from './utils/schedule';
 import { sortHotspots, calcHotScore, hotScoreToDisplay } from './utils/sortHotspots';
 import { relativeTime, formatDateTime } from './utils/relativeTime';
 // TextGenerateEffect available for future use
@@ -32,98 +37,14 @@ function getHeatLevel(score: number): { label: string; color: string } {
   return { label: '冷', color: 'text-[#6f8194]' };
 }
 
-/** 当前巡检实际启用的数据来源 */
-const DATA_SOURCES: {
-  key: string;
-  name: string;
-  category: string;
-  description: string;
-  method: string;
-  url: string;
-  accent: string;
-  requiresKey?: boolean;
-}[] = [
-  {
-    key: 'twitter',
-    name: 'Twitter / X',
-    category: '社交平台',
-    description: '通过 twitterapi.io 高级搜索抓取推文，按点赞 / 转发 / 浏览 / 粉丝门槛做本地质量过滤。',
-    method: '接入方式：第三方 API（需 Key）',
-    url: 'https://x.com',
-    accent: 'bg-sky-500/10 border-sky-500/20 text-sky-700',
-    requiresKey: true
-  },
-  {
-    key: 'weibo',
-    name: '微博',
-    category: '社交平台',
-    description: '移动端关键词搜索优先，未登录时自动降级热搜匹配与相关话题兜底。',
-    method: '接入方式：移动端搜索（可选 Cookie）+ 热搜 API',
-    url: 'https://s.weibo.com/top/summary',
-    accent: 'bg-orange-500/10 border-orange-500/20 text-orange-600'
-  },
-  {
-    key: 'bilibili',
-    name: 'Bilibili',
-    category: '视频平台',
-    description: '调用公开 Web API 搜索视频，并自动识别同名 UP 主、抓取其最新投稿。',
-    method: '接入方式：公开 Web API',
-    url: 'https://www.bilibili.com',
-    accent: 'bg-pink-500/10 border-pink-500/20 text-pink-700'
-  },
-  {
-    key: 'sogou',
-    name: '搜狗搜索',
-    category: '搜索引擎',
-    description: '抓取搜狗网页搜索结果，覆盖中文站点与资讯。',
-    method: '接入方式：页面抓取 + cheerio',
-    url: 'https://www.sogou.com',
-    accent: 'bg-blue-500/10 border-blue-500/20 text-[#1d4ed8]'
-  },
-  {
-    key: 'bing',
-    name: 'Bing',
-    category: '搜索引擎',
-    description: '抓取 Bing 网页搜索结果，覆盖国际站点与资讯。',
-    method: '接入方式：页面抓取 + cheerio',
-    url: 'https://www.bing.com',
-    accent: 'bg-cyan-500/10 border-cyan-500/20 text-cyan-700'
-  },
-  {
-    key: 'hackernews',
-    name: 'Hacker News',
-    category: '技术社区',
-    description: '通过 Algolia 官方 API 检索近 24 小时的技术社区 story。',
-    method: '接入方式：官方 API',
-    url: 'https://news.ycombinator.com',
-    accent: 'bg-amber-500/10 border-amber-500/20 text-amber-700'
-  }
-];
-
-const SOURCE_STATUS_BADGE: Record<string, { label: string; className: string; dot: string }> = {
-  ok: { label: '正常', className: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20', dot: 'bg-emerald-400' },
-  empty: { label: '无结果', className: 'bg-slate-500/10 text-[#5c6f82] border-slate-500/20', dot: 'bg-slate-400' },
-  timeout: { label: '超时', className: 'bg-amber-500/10 text-amber-700 border-amber-500/20', dot: 'bg-amber-400' },
-  error: { label: '异常', className: 'bg-red-500/10 text-red-600 border-red-500/20', dot: 'bg-red-400' },
-  skipped: { label: '已跳过', className: 'bg-slate-500/10 text-[#5c6f82] border-slate-500/20', dot: 'bg-slate-500' },
-};
-
-function getStatusBadge(status?: SourceStatusEntry) {
-  if (!status) {
-    return { label: '未运行', className: 'bg-[#eef2f6] text-[#5c6f82] border-[#d7e0e8]', dot: 'bg-slate-600' };
-  }
-  return SOURCE_STATUS_BADGE[status.state] ?? SOURCE_STATUS_BADGE.empty;
-}
-
 const SEARCH_HISTORY_KEY = 'hotpulse:search-history';
 const MAX_SEARCH_HISTORY = 12;
 
 const NAV_ITEMS = [
   { key: 'dashboard', label: '热点雷达', en: 'RADAR', icon: Activity },
   { key: 'hotboard', label: '全网热榜', en: 'BOARDS', icon: Flame },
-  { key: 'keywords', label: '监控词', en: 'KEYWORDS', icon: Target },
+  { key: 'wechat', label: '公众号订阅', en: 'WECHAT', icon: Rss },
   { key: 'search', label: '搜索', en: 'SEARCH', icon: Search },
-  { key: 'sources', label: '数据来源', en: 'SOURCES', icon: Database },
   { key: 'settings', label: '模型服务', en: 'MODELS', icon: SettingsIcon },
   { key: 'email', label: '邮件通知', en: 'MAIL', icon: Mail },
 ] as const;
@@ -150,12 +71,16 @@ function App() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
-  const [newKeyword, setNewKeyword] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'hotboard' | 'keywords' | 'search' | 'sources' | 'settings' | 'email'>('dashboard');
+  const [showKeywords, setShowKeywords] = useState(false);
+  const [showSources, setShowSources] = useState(false);
+  const [showPatrolSchedule, setShowPatrolSchedule] = useState(false);
+  const [patrolSchedule, setPatrolSchedule] = useState<CheckSchedule | null>(null);
+  const [patrolLoading, setPatrolLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'hotboard' | 'wechat' | 'search' | 'settings' | 'email'>('dashboard');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [dashboardFilters, setDashboardFilters] = useState<FilterState>({ ...defaultFilterState });
   const [searchFilters, setSearchFilters] = useState<FilterState>({ ...defaultFilterState });
@@ -171,11 +96,6 @@ function App() {
   const [allReasonsExpanded, setAllReasonsExpanded] = useState(false);
   // 请求序号：只应用最新一次请求的结果，避免旧页码/旧筛选的响应覆盖新数据
   const loadSeqRef = useRef(0);
-
-  const totalSourceCount = DATA_SOURCES.reduce(
-    (sum, s) => sum + (stats?.bySource?.[s.key] ?? 0),
-    0
-  );
 
   // 加载数据
   const loadData = useCallback(async () => {
@@ -279,14 +199,12 @@ function App() {
   };
 
   // 添加关键词
-  const handleAddKeyword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newKeyword.trim()) return;
+  const handleAddKeyword = async (text: string) => {
+    if (!text.trim()) return;
 
     try {
-      const keyword = await keywordsApi.create({ text: newKeyword.trim() });
+      const keyword = await keywordsApi.create({ text: text.trim() });
       setKeywords(prev => [keyword, ...prev]);
-      setNewKeyword('');
       showToast('关键词添加成功', 'success');
       subscribeToKeywords([keyword.text]);
     } catch (error: any) {
@@ -312,6 +230,23 @@ function App() {
       setKeywords(prev => prev.map(k => k.id === id ? updated : k));
     } catch (error) {
       showToast('操作失败', 'error');
+    }
+  };
+
+  // 加载巡检设置
+  useEffect(() => {
+    hotspotsApi.getSchedule().then(setPatrolSchedule).catch(() => {});
+  }, []);
+
+  const openPatrolSchedule = async () => {
+    setPatrolLoading(true);
+    try {
+      setPatrolSchedule(await hotspotsApi.getSchedule());
+      setShowPatrolSchedule(true);
+    } catch {
+      showToast('获取巡检设置失败', 'error');
+    } finally {
+      setPatrolLoading(false);
     }
   };
 
@@ -558,7 +493,7 @@ function App() {
       case 'twitter': return <Twitter className="w-4 h-4" />;
       case 'bilibili': return <Eye className="w-4 h-4" />;
       case 'weibo': return <Activity className="w-4 h-4" />;
-      case 'sogou': return <Search className="w-4 h-4" />;
+      case 'juejin': return <FileText className="w-4 h-4" />;
       case 'hackernews': return <Zap className="w-4 h-4" />;
       default: return <Globe className="w-4 h-4" />;
     }
@@ -567,13 +502,10 @@ function App() {
   const getSourceLabel = (source: string) => {
     const labels: Record<string, string> = {
       twitter: 'Twitter',
-      bing: 'Bing',
-      google: 'Google',
-      sogou: '搜狗',
       bilibili: 'Bilibili',
       weibo: '微博热搜',
-      hackernews: 'HackerNews',
-      duckduckgo: 'DuckDuckGo'
+      juejin: '稀土掘金',
+      hackernews: 'HackerNews'
     };
     return labels[source] || source;
   };
@@ -647,6 +579,8 @@ function App() {
     </div>
   );
 
+  const patrolLabel = formatScheduleLabel(patrolSchedule, '每 30 分钟');
+
   return (
     <div className="relative min-h-screen">
       {/* Ambient background */}
@@ -675,6 +609,40 @@ function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {showKeywords && (
+        <KeywordsModal
+          keywords={keywords}
+          onClose={() => setShowKeywords(false)}
+          onAdd={handleAddKeyword}
+          onDelete={handleDeleteKeyword}
+          onToggle={handleToggleKeyword}
+        />
+      )}
+
+      {showSources && (
+        <SourcesModal
+          stats={stats}
+          sourceStatus={sourceStatus}
+          onClose={() => setShowSources(false)}
+        />
+      )}
+
+      {showPatrolSchedule && patrolSchedule && (
+        <ScheduleModal
+          title="巡检设置"
+          targetLabel="数据来源"
+          actionLabel="巡检"
+          schedule={patrolSchedule}
+          onClose={() => setShowPatrolSchedule(false)}
+          onSave={async data => {
+            const saved = await hotspotsApi.saveSchedule(data);
+            setPatrolSchedule(saved);
+            showToast('巡检设置已保存', 'success');
+          }}
+          onError={message => showToast(message, 'error')}
+        />
+      )}
 
       {/* Sidebar — desktop */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[236px] flex-col border-r border-[#dfe6ec] bg-white/75 backdrop-blur-2xl lg:flex">
@@ -722,7 +690,7 @@ function App() {
             <span className="tech-label">System Online</span>
           </div>
           <p className="mt-2 text-[11px] leading-relaxed text-[#8a99a8]">
-            30 分钟自动巡检 · Socket 实时推送
+            自动巡检 · Socket 实时推送
           </p>
         </div>
       </aside>
@@ -783,19 +751,60 @@ function App() {
           <HotBoardPanel />
         )}
 
+        {/* 公众号订阅 Tab */}
+        {activeTab === 'wechat' && (
+          <WechatSubscriptionsPanel onToast={showToast} />
+        )}
+
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             {/* Page heading */}
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <p className="tech-label">Radar / 热点雷达</p>
-                <h1 className="font-display mt-2 text-[32px] leading-none tracking-tight text-[#0b1726] sm:text-[38px]">
-                  实时情报总览
-                </h1>
+            <div>
+              <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+                <div>
+                  <p className="tech-label">Radar / 热点雷达</p>
+                  <h1 className="font-display mt-2 text-[32px] leading-none tracking-tight text-[#0b1726] sm:text-[38px]">
+                    实时情报总览
+                  </h1>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <motion.button
+                    onClick={openPatrolSchedule}
+                    disabled={patrolLoading}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    title="设置热点巡检时间"
+                    className="flex items-center gap-2 rounded-xl border border-[#dfe6ec] bg-white px-4 py-2.5 text-[13px] font-medium text-[#0b1726] shadow-[0_16px_32px_-26px_rgba(11,23,38,0.45)] transition-all hover:border-[#c9d5df] disabled:opacity-50"
+                  >
+                    <Clock className="h-4 w-4 text-[#1d4ed8]" />
+                    {formatScheduleLabel(patrolSchedule, '巡检设置')}
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setShowSources(true)}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 rounded-xl border border-[#dfe6ec] bg-white px-4 py-2.5 text-[13px] font-medium text-[#0b1726] shadow-[0_16px_32px_-26px_rgba(11,23,38,0.45)] transition-all hover:border-[#c9d5df]"
+                  >
+                    <Database className="h-4 w-4 text-[#1d4ed8]" />
+                    数据来源
+                  </motion.button>
+                  <motion.button
+                    onClick={() => setShowKeywords(true)}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex items-center gap-2 rounded-xl border border-[#dfe6ec] bg-white px-4 py-2.5 text-[13px] font-medium text-[#0b1726] shadow-[0_16px_32px_-26px_rgba(11,23,38,0.45)] transition-all hover:border-[#c9d5df]"
+                  >
+                    <Target className="h-4 w-4 text-[#1d4ed8]" />
+                    监控词
+                    <span className="rounded-full bg-[#eef2f6] px-2 py-0.5 text-[11px] tabular-nums text-[#5c6f82]">
+                      {keywords.filter(k => k.isActive).length}/{keywords.length}
+                    </span>
+                  </motion.button>
+                </div>
               </div>
-              <p className="max-w-sm text-xs leading-relaxed text-[#8a99a8]">
-                所有来源每 30 分钟巡检一次，经 AI 去重、相关性评分与跨源聚类后进入下方信息流。
+              <p className="mt-3 max-w-xl text-xs leading-relaxed text-[#8a99a8]">
+                所有来源{patrolLabel}巡检一次，经 AI 去重、相关性评分与跨源聚类后进入下方信息流。
               </p>
             </div>
 
@@ -861,7 +870,7 @@ function App() {
                     实时热点流
                   </h2>
                 </div>
-                <span className="text-[11px] text-[#8a99a8]">每 30 分钟自动更新</span>
+                <span className="text-[11px] text-[#8a99a8]">{patrolLabel}自动更新</span>
               </div>
 
               {/* Filter & Sort Bar */}
@@ -1242,108 +1251,6 @@ function App() {
           </div>
         )}
 
-        {/* Keywords Tab */}
-        {activeTab === 'keywords' && (
-          <div className="space-y-6">
-            <div>
-              <p className="tech-label">Watchlist / 监控词</p>
-              <h1 className="font-display mt-2 text-[30px] leading-none tracking-tight text-[#0b1726]">关注的关键词</h1>
-            </div>
-
-            {/* Add Keyword Card */}
-            <form onSubmit={handleAddKeyword} className="panel p-5">
-              <div className="flex gap-3">
-                <div className="flex-1 relative">
-                  <input
-                    type="text"
-                    value={newKeyword}
-                    onChange={(e) => setNewKeyword(e.target.value)}
-                    placeholder="输入要监控的关键词，如：GPT-5、AI编程、Cursor..."
-                    className="w-full px-4 py-3 rounded-xl bg-[#eef2f6] border border-[#d7e0e8] text-[#0b1726] placeholder-[#9aa8b5] focus:outline-none focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  />
-                </div>
-                <motion.button 
-                  type="submit" 
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-medium flex items-center gap-2 shadow-lg shadow-blue-500/25"
-                >
-                  <Plus className="w-4 h-4" />
-                  添加
-                </motion.button>
-              </div>
-            </form>
-
-            {/* Keywords Grid */}
-            <div className="grid gap-3 md:grid-cols-2">
-              <AnimatePresence>
-                {keywords.map((keyword, i) => (
-                  <motion.div
-                    key={keyword.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ delay: i * 0.02 }}
-                    className={cn(
-                      "group p-4 rounded-xl border transition-all",
-                      keyword.isActive 
-                        ? "bg-white border-[#c7d7fe] hover:border-[#a9c2fb] shadow-[0_16px_36px_-32px_rgba(11,23,38,0.45)]" 
-                        : "bg-[#fafbfc] border-[#e3e9ef] opacity-60"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {/* Toggle */}
-                        <button
-                          onClick={() => handleToggleKeyword(keyword.id)}
-                          className={cn(
-                            "w-11 h-6 rounded-full transition-all relative",
-                            keyword.isActive ? "bg-[#1d4ed8]" : "bg-[#c9d5df]"
-                          )}
-                        >
-                          <span className={cn(
-                            "absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-all",
-                            keyword.isActive ? "left-6" : "left-1"
-                          )} />
-                        </button>
-                        
-                        <div>
-                          <span className={cn("font-medium", keyword.isActive ? "text-[#0b1726]" : "text-[#6f8194]")}>
-                            {keyword.text}
-                          </span>
-                          {keyword._count && keyword._count.hotspots > 0 && (
-                            <span className="ml-2 text-xs text-slate-600">
-                              {keyword._count.hotspots} 条热点
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <button
-                        onClick={() => handleDeleteKeyword(keyword.id)}
-                        className="p-2 rounded-lg text-slate-600 hover:text-red-600 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-
-            {keywords.length === 0 && (
-              <div className="text-center py-16 rounded-2xl border border-dashed border-[#d7e0e8]">
-                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#eef2f6] flex items-center justify-center">
-                  <Target className="w-8 h-8 text-slate-600" />
-                </div>
-                <p className="text-[#6f8194]">还没有监控关键词</p>
-                <p className="text-sm text-slate-600 mt-1">添加你想追踪的技术热点词</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Search Tab */}
         {activeTab === 'search' && (
           <div className="space-y-6">
@@ -1549,116 +1456,6 @@ function App() {
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {/* 数据来源 Tab */}
-        {activeTab === 'sources' && (
-          <div className="space-y-6">
-            <div>
-              <p className="tech-label">Sources / 数据来源</p>
-              <h1 className="font-display mt-2 text-[30px] leading-none tracking-tight text-[#0b1726]">采集矩阵</h1>
-            </div>
-
-            {/* Summary */}
-            <div className="panel p-5 flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold text-[#0b1726] flex items-center gap-2">
-                  <Database className="w-5 h-5 text-[#1d4ed8]" />
-                  当前数据来源
-                </h2>
-                <p className="text-sm text-[#6f8194] mt-1">
-                  每次巡检会并行抓取以下 {DATA_SOURCES.length} 个来源，单源失败不影响其他来源
-                </p>
-              </div>
-              <div className="flex items-center gap-8">
-                <div>
-                  <p className="text-xs text-[#6f8194]">已接入来源</p>
-                  <p className="text-2xl font-bold text-[#0b1726]">{DATA_SOURCES.length}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-[#6f8194]">累计采集</p>
-                  <p className="text-2xl font-bold text-[#1d4ed8]">{totalSourceCount.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Source list */}
-            <div className="space-y-3">
-              {DATA_SOURCES.map((source, index) => {
-                const count = stats?.bySource?.[source.key] ?? 0;
-                const status = sourceStatus?.sources.find(item => item.source === source.key);
-                const badge = getStatusBadge(status);
-                return (
-                  <motion.div
-                    key={source.key}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.04 }}
-                    className="group p-4 rounded-2xl bg-white hover:bg-[#f6f8fa] border border-[#e3e9ef] hover:border-[#d7e0e8] transition-all"
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={cn(
-                        "w-10 h-10 rounded-xl flex items-center justify-center border shrink-0",
-                        source.accent
-                      )}>
-                        {getSourceIcon(source.key)}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-medium text-[#0b1726]">{source.name}</h3>
-                          <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#eef2f6] border border-[#d7e0e8] text-[#5c6f82]">
-                            {source.category}
-                          </span>
-                          <span
-                            className={cn(
-                              'flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md border',
-                              badge.className
-                            )}
-                            title={status?.error || (status ? `最近运行：${status.keyword || '全部关键词'}` : '尚未执行巡检')}
-                          >
-                            <span className={cn('w-1.5 h-1.5 rounded-full', badge.dot)} />
-                            {badge.label}
-                            {status && status.count > 0 ? ` · ${status.count} 条` : ''}
-                            {status?.cacheHit ? ' · 缓存' : ''}
-                          </span>
-                          {source.requiresKey && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 border border-amber-500/20">
-                              需 API Key
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-[#6f8194] mt-1.5">{source.description}</p>
-                        <p className="text-[11px] text-slate-600 mt-1">{source.method}</p>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <p className="text-lg font-semibold text-[#0b1726]">{count.toLocaleString()}</p>
-                        <p className="text-[10px] text-slate-600">已采集</p>
-                        <p className="text-[10px] text-slate-600 mt-1">
-                          {status ? relativeTime(status.lastRunAt) : '尚未运行'}
-                        </p>
-                      </div>
-
-                      <a
-                        href={source.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title={`打开 ${source.name}`}
-                        className="p-2 rounded-xl bg-[#eef2f6] hover:bg-blue-500/20 text-[#6f8194] hover:text-[#1d4ed8] transition-all shrink-0"
-                      >
-                        <ExternalLink className="w-4 h-4" />
-                      </a>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            <p className="text-xs text-slate-600">
-              另有 Google、DuckDuckGo 采集器已内置在服务端，但当前未接入默认巡检。
-            </p>
           </div>
         )}
 

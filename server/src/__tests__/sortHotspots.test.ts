@@ -47,7 +47,7 @@ describe('calcHotScore', () => {
   });
 
   it('所有指标为 null 时返回较低的基准分', () => {
-    const item = makeHotspot({ source: 'bing', likeCount: null, retweetCount: null, viewCount: null, publishedAt: recent() });
+    const item = makeHotspot({ source: 'hackernews', likeCount: null, retweetCount: null, viewCount: null, publishedAt: recent() });
     const score = calcHotScore(item);
     expect(score).toBeGreaterThan(0);
     expect(score).toBeLessThanOrEqual(15);
